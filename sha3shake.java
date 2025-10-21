@@ -16,7 +16,8 @@ public class SHA3SHAKE {
   * @param pos initial index to hash from
   * @param len byte count on the buffer
   */
-  public void absorb(byte[] data, int pos, int len) { /* ... */ }
+  public void absorb(byte[] data, int pos, int len) {
+  }
 
   /**
   * Update the SHAKE sponge with a byte-oriented data chunk.
@@ -68,7 +69,11 @@ public class SHA3SHAKE {
   * @param out hash value buffer
   * @return the val buffer containing the desired hash value
   */
-  public byte[] digest(byte[] out) { /* ... */ }
+  public byte[] digest(byte[] out) {
+    assert out.length > digestLength();
+    // fill out
+    return out;
+  }
 
   /**
   * Squeeze a whole SHA-3 digest of hashed bytes from the sponge.
@@ -76,7 +81,8 @@ public class SHA3SHAKE {
   * @return the desired hash value on a newly allocated byte array
   */
   public byte[] digest() {
-
+    final byte[] out = new byte[digestLength];
+    return digest(out);
   }
 
   /**
@@ -87,7 +93,8 @@ public class SHA3SHAKE {
   * @param out hash value buffer (if null, this method allocates it with the required size)
   * @return the out buffer containing the desired hash value.
   */
-  public static byte[] SHA3(int suffix, byte[] X, byte[] out) { /* ... */ }
+  public static byte[] SHA3(int suffix, byte[] X, byte[] out) {
+  }
 
   /**
   * Compute the streamlined SHAKE-<128,256> on input X with output bitlength L.
@@ -102,11 +109,10 @@ public class SHA3SHAKE {
     final int length_bytes = L >> 3;
   }
 
-
   /**
   * 10*1 pads the input string to a multiple of `x` bits.
   * 
-  * @param n The message size in bits
+  * @param n The message to pad
   * @param x The block size, must be a multiple of 8.
   * @return The padded buffer
   */
@@ -121,10 +127,15 @@ public class SHA3SHAKE {
     assert (message_length % x_bytes) == 0;
 
     final byte[] ret = new byte[message_length];
+<<<<<<< Updated upstream
     System.arraycopy(n,
                      0,
                      ret,
                      0,
+=======
+    System.arraycopy(ret, 0,
+                     n,   0,
+>>>>>>> Stashed changes
                      n.length);
 
     if (bytes_padding == 1) {
