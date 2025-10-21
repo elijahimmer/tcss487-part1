@@ -25,7 +25,7 @@ public class SHA3SHAKE {
   * @param len byte count on the buffer (starting at index 0)
   */
   public void absorb(byte[] data, int len) {
-    abosrb(data, 0, len);
+    absorb(data, 0, len);
   }
 
   /**
@@ -121,7 +121,7 @@ public class SHA3SHAKE {
     assert (message_length % x_bytes) == 0;
 
     final byte[] ret = new byte[message_length];
-    System.arraycopy(n, 
+    System.arraycopy(n,
                      0,
                      ret,
                      0,
