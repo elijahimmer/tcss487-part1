@@ -1,11 +1,13 @@
 public class SHA3SHAKE {
   public SHA3SHAKE() {}
+
   /**
   * Initialize the SHA-3/SHAKE sponge.
   * The suffix must be one of 224, 256, 384, or 512 for SHA-3, or one of 128 or 256 for SHAKE.
   * @param suffix SHA-3/SHAKE suffix (SHA-3 digest bitlength = suffix, SHAKE sec level = suffix)
   */
-  public void init(int suffix) { /* ... */ }
+  public void init(int suffix) {
+  }
 
   /**
   * Update the SHAKE sponge with a byte-oriented data chunk.
@@ -96,6 +98,45 @@ public class SHA3SHAKE {
   * @param out hash value buffer (if null, this method allocates it with the required size)
   * @return the out buffer containing the desired hash value.
   */
-  public static byte[] SHAKE(int suffix, byte[] X, int L, byte[] out) { /* ... */ }
+  public static byte[] SHAKE(int suffix, byte[] X, int L, byte[] out) {
+    final int length_bytes = L >> 3;
+  }
 
+
+  /**
+  * 10*1 pads the input string to a multiple of `x` bits.
+  * 
+  * @param n The message size in bits
+  * @param x The block size, must be a multiple of 8.
+  * @return The padded buffer
+  */
+  private static byte[] pad(byte[] n, int x) {
+    assert (x & 0b111) == 0; // x must be a multiple of 8.
+    final int x_bytes = x >> 3;
+
+    final int bytes_padding = x_bytes - (n.length % x_bytes);
+    assert bytes_padding > 0;
+
+    final int message_length = n.length + bytes_padding;
+    assert (message_length % x_bytes) == 0;
+
+    final byte[] ret = new byte[message_length];
+    System.arraycopy(n, 
+                     0,
+                     ret,
+                     0,
+                     n.length);
+
+    if (bytes_padding == 1) {
+      assert ret.length == n.length + 1;
+      ret[n.length] = 0b1000_0001;
+    } else {
+      ret[n.length] = 0b1000_0000;
+
+      for (int i = n.length + 1; i < ret.length - 1; i++)
+        ret[i] = 0;
+      
+      ret[ret.length - 1] = 0b000_0001;
+    }
+  }
 }
