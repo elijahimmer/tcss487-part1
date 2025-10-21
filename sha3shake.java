@@ -5,9 +5,15 @@ public class SHA3SHAKE {
   private static final int BUFFER_LEN = 200;
 
   /**
+  * The buffer size in longs
+  */
+  private static final int LONG_BUFFER_LEN = 25;
+
+  /**
   * The data buffer, must be BUFFER_LEN long
   */
   private final byte[] buffer = null;
+
   /**
   * The digest length for the output
   */
@@ -53,7 +59,7 @@ public class SHA3SHAKE {
       j += 1;
       if (j >= this.digest_length) {
         j = 0;
-        keccak();
+        keccak(this.buffer);
       }
     }
     assert j == 0, "padded message must be a multiple of the digest length";
@@ -189,34 +195,50 @@ public class SHA3SHAKE {
   /**
   * Scrambles the buffer using the sha-3 keccak algorithm
   */
-  private void keccak() {
+  private static void keccak(byte[] input) {
+    assert input.length == BUFFER_LEN;
+
+    // TODO(Elijah): Find out how to byte transmute
+    //               the byte array into a long array
+    final long[] long_array = new long[LONG_BUFFER_LEN];
+
+    // copy over data
+    for (int i = 0; i < LONG_BUFFER_LEN; i += 1) {
+      // If this doesn't work, switch the 0-7 to be 7-0
+      // Little endian vs Big endian stuff
+      long_array[i] =
+        (input[(i << 3) + 0] << 56)
+        (input[(i << 3) + 1] << 48)
+        (input[(i << 3) + 2] << 40)
+        (input[(i << 3) + 3] << 32)
+        (input[(i << 3) + 4] << 24)
+        (input[(i << 3) + 5] << 16)
+        (input[(i << 3) + 6] <<  8)
+        (input[(i << 3) + 7] <<  0);
+    }
+
+    // Run algorithm
     for (int i = 0; i < KECCAK_ROUNDS; i += 1)
-      rnd(i);
-  };
+      rnd(long_array = i);
+
+    // Copy back data.
+    for (int i = 0; i < LONG_BUFFER_LEN; i += 1) {
+      // If this doesn't work, switch the 0-7 to be 7-0
+      // Little endian vs Big endian stuff
+      input[(i << 3) + 0] = (byte) ((long_array[i] >> 56));
+      input[(i << 3) + 1] = (byte) ((long_array[i] >> 48) & 0xFF);
+      input[(i << 3) + 2] = (byte) ((long_array[i] >> 40) & 0xFF);
+      input[(i << 3) + 3] = (byte) ((long_array[i] >> 32) & 0xFF);
+      input[(i << 3) + 4] = (byte) ((long_array[i] >> 24) & 0xFF);
+      input[(i << 3) + 5] = (byte) ((long_array[i] >> 16) & 0xFF);
+      input[(i << 3) + 6] = (byte) ((long_array[i] >>  8) & 0xFF);
+      input[(i << 3) + 7] = (byte) ((long_array[i] >>  0) & 0xFF);
+    }
+  }
 
   /**
   * One round of the sha-3 keccak algorithm
   */
-  private void rnd(int index) {
-    transformTheta();
-    transformRho();
-    transformPi();
-    transformChi();
-    transformIota(index);
-  }
-
-  private void transformTheta() {
-  }
-
-  private void transformRho() {
-  }
-
-  private void transformPi() {
-  }
-
-  private void transformChi() {
-  }
-
-  private void transformIota(int i) {
+  private static void rnd(long[] data, int index) {
   }
 }
