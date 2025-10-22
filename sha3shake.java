@@ -214,7 +214,7 @@ public class SHA3SHAKE {
         (input[(i << 3) + 4] << 24)
         (input[(i << 3) + 5] << 16)
         (input[(i << 3) + 6] <<  8)
-        (input[(i << 3) + 7] <<  0);
+        input[(i << 3) + 7];
     }
 
     // Run algorithm
@@ -240,5 +240,10 @@ public class SHA3SHAKE {
   * One round of the sha-3 keccak algorithm
   */
   private static void rnd(long[] data, int index) {
+    // Theta
+    // Rho
+    // Pi
+    // Chi
+    // Iota
   }
 }
