@@ -1,8 +1,8 @@
 public class SHA3SHAKE {
   /**
-  * The buffer size in bytes
+  * The buffer size in u64s
   */
-  private static final int BUFFER_LEN = 200;
+  private static final int BUFFER_LEN = 25;
 
   /**
   * The buffer size in longs
@@ -11,17 +11,17 @@ public class SHA3SHAKE {
   /**
    * 24 rounds in the Keccak function
    */
-  private statice final int KECCAK_ROUNDS = 24;
+  private static final int KECCAK_ROUNDS = 24;
 
   /**
   * The data buffer, must be BUFFER_LEN long
   */
-  private final byte[] buffer = null;
+  private long[] buffer = null;
 
   /**
-  * The digest length for the output
+  * The digest length for the output in bytes
   */
-  private int digest_len;
+  private int digest_length;
 
   public SHA3SHAKE() {}
 
@@ -31,15 +31,15 @@ public class SHA3SHAKE {
   * @param suffix SHA-3/SHAKE suffix (SHA-3 digest bitlength = suffix, SHAKE sec level = suffix)
   */
   public void init(int suffix) {
-    if (this.buffer != null)
-      this.buffer = new byte[BUFFER_LEN];
+    if (this.buffer == null)
+      this.buffer = new long[BUFFER_LEN];
     assert this.buffer.length == BUFFER_LEN;
 
-    // I think alloc in java zero initializes, but just make sure
+    // clear buffer if re-used
     for (int i = 0; i < BUFFER_LEN; i++)
       this.buffer[i] = 0;
 
-    this.digest_len = suffix;
+    this.digest_length = suffix;
   }
 
   /**
@@ -53,20 +53,21 @@ public class SHA3SHAKE {
     assert data != null;
     assert this.buffer != null;
 
-    // TODO(Elijah): Don't realloc, generate padding bytes and add them to the buffer
-    final byte[] padded = pad(data, pos, len, this.digest_length << 3);
-    assert (padded.length % this.digest_length) == 0;
-
     int i, j;
     for (i = pos; i < len; i += 1) {
-      this.buffer[j] ^= data[i];
+      this.buffer[j >> 3] ^= data[i] << (j & 0b11);
       j += 1;
       if (j >= this.digest_length) {
         j = 0;
         keccak(this.buffer);
       }
     }
-    assert j == 0, "padded message must be a multiple of the digest length";
+
+    if (j + 1 == this.digest_length) {
+      this.buffer[j >> 3] ^= 0b1000_0000 << (j & 0b11);
+      this.buffer[(this.digest_len - 1) << 3] ^= 0b0000_0001;
+    }
+    keccak(this.buffer);
   }
 
   /**
@@ -76,7 +77,7 @@ public class SHA3SHAKE {
   * @param len byte count on the buffer (starting at index 0)
   */
   public void absorb(byte[] data, int len) {
-    abosrb(data, 0, len);
+    absorb(data, 0, len);
   }
 
   /**
@@ -96,7 +97,9 @@ public class SHA3SHAKE {
   * @param len desired number of squeezed bytes
   * @return the val buffer containing the desired hash value
   */
-  public byte[] squeeze(byte[] out, int len) { /* ... */ }
+  public byte[] squeeze(byte[] out, int len) {
+
+  }
 
   /**
   * Squeeze a chunk of hashed bytes from the sponge.
@@ -120,7 +123,7 @@ public class SHA3SHAKE {
   * @return the val buffer containing the desired hash value
   */
   public byte[] digest(byte[] out) {
-    assert out.length > digestLength();
+    assert out.length == this.digest_length;
     // fill out
     return out;
   }
@@ -131,7 +134,7 @@ public class SHA3SHAKE {
   * @return the desired hash value on a newly allocated byte array
   */
   public byte[] digest() {
-    final byte[] out = new byte[digestLength];
+    final byte[] out = new byte[this.digest_length];
     return digest(out);
   }
 
@@ -178,11 +181,6 @@ public class SHA3SHAKE {
     final int message_length = len + bytes_padding;
     assert (message_length % x_bytes) == 0;
 
-    final byte[] ret = new byte[message_length];
-    System.arraycopy(ret, 0,
-                     n,   pos,
-                     len);
-
     if (bytes_padding == 1) {
       assert ret.length == len + 1;
       ret[len] = 0b1000_0001;
@@ -199,46 +197,12 @@ public class SHA3SHAKE {
   /**
   * Scrambles the buffer using the sha-3 keccak algorithm
   */
-  private static void keccak(byte[] input) {
+  private static void keccak(long[] input) {
     assert input.length == BUFFER_LEN;
 
-    // TODO(Elijah): Find out how to byte transmute
-    //               the byte array into a long array
-    final long[] long_array = new long[LONG_BUFFER_LEN];
-
-    // copy over data
-    for (int i = 0; i < LONG_BUFFER_LEN; i += 1) {
-      // If this doesn't work, switch the 0-7 to be 7-0
-      // Little endian vs Big endian stuff
-      long_array[i] =
-        (input[(i << 3) + 0] << 56)
-        (input[(i << 3) + 1] << 48)
-        (input[(i << 3) + 2] << 40)
-        (input[(i << 3) + 3] << 32)
-        (input[(i << 3) + 4] << 24)
-        (input[(i << 3) + 5] << 16)
-        (input[(i << 3) + 6] <<  8)
-        input[(i << 3) + 7];
-    }
-
     // Run algorithm
-      //@Elijah, can we just make Keccak rounds a constant 24 via slides
     for (int i = 0; i < KECCAK_ROUNDS; i += 1)
-      rnd(long_array = i);
-
-    // Copy back data.
-    for (int i = 0; i < LONG_BUFFER_LEN; i += 1) {
-      // If this doesn't work, switch the 0-7 to be 7-0
-      // Little endian vs Big endian stuff
-      input[(i << 3) + 0] = (byte) ((long_array[i] >> 56));
-      input[(i << 3) + 1] = (byte) ((long_array[i] >> 48) & 0xFF);
-      input[(i << 3) + 2] = (byte) ((long_array[i] >> 40) & 0xFF);
-      input[(i << 3) + 3] = (byte) ((long_array[i] >> 32) & 0xFF);
-      input[(i << 3) + 4] = (byte) ((long_array[i] >> 24) & 0xFF);
-      input[(i << 3) + 5] = (byte) ((long_array[i] >> 16) & 0xFF);
-      input[(i << 3) + 6] = (byte) ((long_array[i] >>  8) & 0xFF);
-      input[(i << 3) + 7] = (byte) ((long_array[i] >>  0) & 0xFF);
-    }
+      rnd(long_array, i);
   }
 
     /**
@@ -257,11 +221,11 @@ public class SHA3SHAKE {
      * Rotating Offset for Rho
      */
   private static final int[] Rotate = {
-          0, 36, 3,41, 18,
-          1, 44, 10, 45, 2,
-          62, 6, 43, 15, 61,
+           0, 36,  3, 41, 18,
+           1, 44, 10, 45,  2,
+          62,  6, 43, 15, 61,
           28, 55, 25, 21, 56,
-          27, 20, 39, 8, 14
+          27, 20, 39,  8,  14
   };
   /**
    * Helper method for rotl64
@@ -269,7 +233,7 @@ public class SHA3SHAKE {
    * @param y bits rotate left
    * @return x rotate left by y bits
    */
-  private static long rotl64(long x, int y) {
+  private static long rotl64(long x, byte y) {
       return (x << y) | (x >>> (64 - y));
   }
   /**
@@ -296,7 +260,7 @@ public class SHA3SHAKE {
       }
     // Rho + Pi
       long[] B = new long[25];
-      for (int y = 0; y < 5; y++) {
+      for (byte y = 0; y < 5; y++) {
           for (int x = 0; x < 5; x++) {
               // source lane index
               int src = 5 * y + x;
