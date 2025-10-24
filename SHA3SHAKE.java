@@ -1,9 +1,10 @@
+import java.util.Arrays;
+
 public class SHA3SHAKE {
   /**
   * The buffer size in u64s
   */
   private static final int BUFFER_LEN = 25;
-
   /**
   * The buffer size in longs
   */
@@ -12,12 +13,10 @@ public class SHA3SHAKE {
    * 24 rounds in the Keccak function
    */
   private static final int KECCAK_ROUNDS = 24;
-
   /**
   * The data buffer, must be BUFFER_LEN long
   */
   private long[] buffer = null;
-
   /**
   * The digest length for the output in bytes
   */
@@ -31,6 +30,12 @@ public class SHA3SHAKE {
   * @param suffix SHA-3/SHAKE suffix (SHA-3 digest bitlength = suffix, SHAKE sec level = suffix)
   */
   public void init(int suffix) {
+    if (suffix != 128
+     && suffix != 224
+     && suffix != 256
+     && suffix != 384
+     && suffix != 512) throw new IllegalArgumentException("Invalid suffix");
+
     if (this.buffer == null)
       this.buffer = new long[BUFFER_LEN];
     assert this.buffer.length == BUFFER_LEN;
@@ -39,7 +44,7 @@ public class SHA3SHAKE {
     for (int i = 0; i < BUFFER_LEN; i++)
       this.buffer[i] = 0;
 
-    this.digest_length = suffix;
+    this.digest_length = suffix >> 3;
   }
 
   /**
@@ -53,9 +58,9 @@ public class SHA3SHAKE {
     assert data != null;
     assert this.buffer != null;
 
-    int i, j;
+    int i, j = 0;
     for (i = pos; i < len; i += 1) {
-      this.buffer[j >> 3] ^= data[i] << (j & 0b11);
+      this.buffer[j >> 3] ^= data[i] << ((j & 0b111) << 3);
       j += 1;
       if (j >= this.digest_length) {
         j = 0;
@@ -63,11 +68,12 @@ public class SHA3SHAKE {
       }
     }
 
-    if (j + 1 == this.digest_length) {
-      this.buffer[j >> 3] ^= 0b1000_0000 << (j & 0b11);
-      this.buffer[(this.digest_len - 1) << 3] ^= 0b0000_0001;
+    if (j + 1 != this.digest_length) {
+      this.buffer[j >> 3] ^= 0b1000_0000 << ((j & 0b111) << 3);
+      this.buffer[(this.digest_length >> 3) - 1] ^= 0b0000_0001;
+
+      keccak(this.buffer);
     }
-    keccak(this.buffer);
   }
 
   /**
@@ -97,8 +103,31 @@ public class SHA3SHAKE {
   * @param len desired number of squeezed bytes
   * @return the val buffer containing the desired hash value
   */
-  public byte[] squeeze(byte[] out, int len) {
+  public byte[] squeeze(final byte[] out, final int len) {
+    assert out.length >= len;
+    final int block_len = this.digest_length;
 
+    System.out.println("State: " + Arrays.toString(this.buffer));
+
+    int remaining = len;
+    int out_pos = 0;
+
+    while (remaining >= block_len) {
+      for (int i = 0; i < block_len; i++) {
+        out[i + out_pos] = (byte) ((this.buffer[i >> 3] >> ((i & 0b111) << 3)) & 0xFF);
+      }
+      out_pos += block_len;
+      keccak(this.buffer);
+      remaining -= block_len;
+    }
+
+    for (int i = 0; i < remaining; i++) {
+      out[i + out_pos] = (byte) ((this.buffer[i >> 3] >> ((i & 0b111) << 3)) & 0xFF);
+    }
+
+    System.out.println("Array: " + Arrays.toString(out));
+
+    return out;
   }
 
   /**
@@ -124,7 +153,7 @@ public class SHA3SHAKE {
   */
   public byte[] digest(byte[] out) {
     assert out.length == this.digest_length;
-    // fill out
+    squeeze(out, this.digest_length);
     return out;
   }
 
@@ -147,6 +176,14 @@ public class SHA3SHAKE {
   * @return the out buffer containing the desired hash value.
   */
   public static byte[] SHA3(int suffix, byte[] X, byte[] out) {
+    assert out.length == suffix >> 3;
+
+    final SHA3SHAKE sha = new SHA3SHAKE();
+    sha.init(suffix);
+
+    sha.absorb(X);
+    sha.digest(out);
+    return out;
   }
 
   /**
@@ -160,38 +197,15 @@ public class SHA3SHAKE {
   */
   public static byte[] SHAKE(int suffix, byte[] X, int L, byte[] out) {
     final int length_bytes = L >> 3;
-  }
+    assert out.length >= length_bytes;
 
-  /**
-  * 10*1 pads the input string to a multiple of `x` bits.
-  * 
-  * @param n The message to pad
-  * @param pos initial index to start padding from
-  * @param len byte count on the buffer
-  * @param x The block size, must be a multiple of 8.
-  * @return The padded buffer
-  */
-  private static byte[] pad(byte[] n, int pos, int len, int x) {
-    assert (x & 0b111) == 0; // x must be a multiple of 8.
-    final int x_bytes = x >> 3;
+    final SHA3SHAKE sha = new SHA3SHAKE();
+    sha.init(suffix);
 
-    final int bytes_padding = x_bytes - (len % x_bytes);
-    assert bytes_padding > 0;
+    sha.absorb(X);
+    sha.squeeze(out, length_bytes);
 
-    final int message_length = len + bytes_padding;
-    assert (message_length % x_bytes) == 0;
-
-    if (bytes_padding == 1) {
-      assert ret.length == len + 1;
-      ret[len] = 0b1000_0001;
-    } else {
-      ret[len] = 0b1000_0000;
-
-      for (int i = len + 1; i < ret.length - 1; i++)
-        ret[i] = 0;
-      
-      ret[ret.length - 1] = 0b000_0001;
-    }
+    return out;
   }
 
   /**
@@ -202,7 +216,7 @@ public class SHA3SHAKE {
 
     // Run algorithm
     for (int i = 0; i < KECCAK_ROUNDS; i += 1)
-      rnd(long_array, i);
+      rnd(input, i);
   }
 
     /**
@@ -233,7 +247,7 @@ public class SHA3SHAKE {
    * @param y bits rotate left
    * @return x rotate left by y bits
    */
-  private static long rotl64(long x, byte y) {
+  private static long rotl64(long x, int y) {
       return (x << y) | (x >>> (64 - y));
   }
   /**
