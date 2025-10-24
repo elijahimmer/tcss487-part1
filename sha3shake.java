@@ -8,6 +8,10 @@ public class SHA3SHAKE {
   * The buffer size in longs
   */
   private static final int LONG_BUFFER_LEN = 25;
+  /**
+   * 24 rounds in the Keccak function
+   */
+  private statice final int KECCAK_ROUNDS = 24;
 
   /**
   * The data buffer, must be BUFFER_LEN long
@@ -218,6 +222,7 @@ public class SHA3SHAKE {
     }
 
     // Run algorithm
+      //@Elijah, can we just make Keccak rounds a constant 24 via slides
     for (int i = 0; i < KECCAK_ROUNDS; i += 1)
       rnd(long_array = i);
 
@@ -236,14 +241,102 @@ public class SHA3SHAKE {
     }
   }
 
+    /**
+     * Round constants for Keccak-f[1600], width = 64
+     */
+  private static final long[] roundConstants = {
+          0x0000000000000001L, 0x0000000000008082L, 0x800000000000808AL, 0x8000000080008000L,
+          0x000000000000808BL, 0x0000000080000001L, 0x8000000080008081L, 0x8000000000008009L,
+          0x000000000000008AL, 0x0000000000000088L, 0x0000000080008009L, 0x000000008000000AL,
+          0x000000008000808BL, 0x800000000000008BL, 0x8000000000008089L, 0x8000000000008003L,
+          0x8000000000008002L, 0x8000000000000080L, 0x000000000000800AL, 0x800000008000000AL,
+          0x8000000080008081L, 0x8000000000008080L, 0x0000000080000001L, 0x8000000080008008L
+  };
+
+    /**
+     * Rotating Offset for Rho
+     */
+  private static final int[] Rotate = {
+          0, 36, 3,41, 18,
+          1, 44, 10, 45, 2,
+          62, 6, 43, 15, 61,
+          28, 55, 25, 21, 56,
+          27, 20, 39, 8, 14
+  };
+  /**
+   * Helper method for rotl64
+   * @param x 64-bit value to rotate
+   * @param y bits rotate left
+   * @return x rotate left by y bits
+   */
+  private static long rotl64(long x, int y) {
+      return (x << y) | (x >>> (64 - y));
+  }
   /**
   * One round of the sha-3 keccak algorithm
   */
   private static void rnd(long[] data, int index) {
-    // Theta
-    // Rho
-    // Pi
+    // Theta: columns mix
+      long[] C = new long[5];
+      for (int i = 0; i < 5; i++) {
+          C[i] = data[i] ^ data[i + 5] ^ data[i + 10] ^ data[i + 15] ^ data[i + 20];
+      }
+      // direction
+      long[] D = new long[5];
+      for (int x = 0; x < 5; x++) {
+          D[x] = rotl64(C[(x + 1) % 5], 1) ^ C[(x + 4) % 5];
+      }
+      for (int y = 0; y < 5; y++) {
+          int row = 5 * y;
+          data[row + 0] ^= D[0];
+          data[row + 1] ^= D[1];
+          data[row + 2] ^= D[2];
+          data[row + 3] ^= D[3];
+          data[row + 4] ^= D[4];
+      }
+    // Rho + Pi
+      long[] B = new long[25];
+      for (int y = 0; y < 5; y++) {
+          for (int x = 0; x < 5; x++) {
+              // source lane index
+              int src = 5 * y + x;
+              // x prime
+              int xp = y;
+              //y prime
+              int yp = (2 * x + 3 * y) % 5;
+              // x', y' in 5x5 grid
+              int dst = 5 * yp + xp;
+              // rho rotation
+              B[dst] = rotl64(data[src], Rotate[src]);
+          }
+      }
     // Chi
+      for (int y = 0; y < 5; y++) {
+//          long[] st = new long[5];
+//          for (int x = 0; x < 5; x++) {
+//              st[x] = data[y + x];
+//          }
+//          for (int x = 0; x < 5; x++) {
+//              data[y + x] = st[x] ^ ((~st[(x + 1) % 5]) & st[(x + 2) % 5]);
+//          }
+          // This is more efficient.
+          // start index of rows
+          int st = 5 * y;
+          // b0-4 = A[x,y] because we are working in the B array we don't need to apply z.
+          long b0 = B[st + 0];
+          long b1 = B[st + 1];
+          long b2 = B[st + 2];
+          long b3 = B[st + 3];
+          long b4 = B[st + 4];
+          // Output A'
+          data[st + 0] = b0 ^ ((~b1) & b2);
+          data[st + 1] = b1 ^ ((~b2) & b3);
+          data[st + 2] = b2 ^ ((~b3) & b4);
+          data[st + 3] = b3 ^ ((~b4) & b0);
+          data[st + 4] = b4 ^ ((~b0) & b1);
+
+      }
     // Iota
+      data[0] ^= roundConstants[index];
   }
 }
