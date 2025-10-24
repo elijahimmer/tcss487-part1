@@ -12,11 +12,14 @@ public class Driver {
 
     final File file = new File(args[0]);
     final byte[] contents = Files.readAllBytes(file.toPath());
-    final byte[] out = new byte[256 >> 3];
+    final int suffix = 256;
+    final byte[] out = new byte[suffix >> 3];
 
-    SHA3SHAKE.SHA3(256, contents, out);
+    SHA3SHAKE.SHA3(suffix, contents, out);
 
-    System.out.printf("%d, %d\n", out[0], out[1]);
-    System.out.println(Arrays.toString(out));
+    for (byte b : out) {
+      System.out.printf("%x", b);
+    }
+    System.out.println(" " + args[0]);
   }
 }

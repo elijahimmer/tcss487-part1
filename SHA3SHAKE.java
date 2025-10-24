@@ -107,7 +107,7 @@ public class SHA3SHAKE {
     assert out.length >= len;
     final int block_len = this.digest_length;
 
-    System.out.println("State: " + Arrays.toString(this.buffer));
+    System.err.println("State: " + Arrays.toString(this.buffer));
 
     int remaining = len;
     int out_pos = 0;
@@ -125,7 +125,7 @@ public class SHA3SHAKE {
       out[i + out_pos] = (byte) ((this.buffer[i >> 3] >> ((i & 0b111) << 3)) & 0xFF);
     }
 
-    System.out.println("Array: " + Arrays.toString(out));
+    System.err.println("Array: " + Arrays.toString(out));
 
     return out;
   }
