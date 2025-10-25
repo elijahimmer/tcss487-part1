@@ -11,8 +11,9 @@ public class Driver {
     }
 
     final File file = new File(args[0]);
-    final byte[] contents = Files.readAllBytes(file.toPath());
-    final int suffix = 256;
+    // final byte[] contents = Files.readAllBytes(file.toPath());
+    final byte[] contents = new byte[0];
+    final int suffix = 224;
     final byte[] out = new byte[suffix >> 3];
 
     SHA3SHAKE.SHA3(suffix, contents, out);

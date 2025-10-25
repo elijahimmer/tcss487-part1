@@ -30,12 +30,6 @@ public class SHA3SHAKE {
   * @param suffix SHA-3/SHAKE suffix (SHA-3 digest bitlength = suffix, SHAKE sec level = suffix)
   */
   public void init(int suffix) {
-    if (suffix != 128
-     && suffix != 224
-     && suffix != 256
-     && suffix != 384
-     && suffix != 512) throw new IllegalArgumentException("Invalid suffix");
-
     if (this.buffer == null)
       this.buffer = new long[BUFFER_LEN];
     assert this.buffer.length == BUFFER_LEN;
@@ -44,7 +38,7 @@ public class SHA3SHAKE {
     for (int i = 0; i < BUFFER_LEN; i++)
       this.buffer[i] = 0;
 
-    this.digest_length = suffix >> 3;
+    this.digest_length = suffix >>> 3;
   }
 
   /**
@@ -60,7 +54,7 @@ public class SHA3SHAKE {
 
     int i, j = 0;
     for (i = pos; i < len; i += 1) {
-      this.buffer[j >> 3] ^= data[i] << ((j & 0b111) << 3);
+      this.buffer[j >>> 3] ^= data[i] << ((j & 0b111) << 3);
       j += 1;
       if (j >= this.digest_length) {
         j = 0;
@@ -69,10 +63,10 @@ public class SHA3SHAKE {
     }
 
     if (j + 1 != this.digest_length) {
-      this.buffer[j >> 3] ^= 0b1000_0000 << ((j & 0b111) << 3);
-      this.buffer[(this.digest_length >> 3) - 1] ^= 0b0000_0001;
+      this.buffer[j >>> 3] ^= 0b1000_0000l << ((j & 0b111) << 3);
+      this.buffer[this.digest_length >>> 3] ^= 1;
 
-      keccak(this.buffer);
+      // keccak(this.buffer);
     }
   }
 
@@ -107,23 +101,25 @@ public class SHA3SHAKE {
     assert out.length >= len;
     final int block_len = this.digest_length;
 
-    System.err.println("State: " + Arrays.toString(this.buffer));
+    System.err.printf("First: %s\n", Long.toBinaryString(this.buffer[0]));
+    System.err.printf("Last : %s\n", Long.toBinaryString(this.buffer[this.digest_length >>> 3]));
+    System.err.printf("State: %s\n", Arrays.toString(this.buffer));
 
     int remaining = len;
     int out_pos = 0;
 
     while (remaining >= block_len) {
       for (int i = 0; i < block_len; i++) {
-        out[i + out_pos] = (byte) ((this.buffer[i >> 3] >> ((i & 0b111) << 3)) & 0xFF);
+        out[i + out_pos] = (byte) ((this.buffer[i >>> 3] >>> ((i & 0b111) << 3)) & 0xFF);
       }
       out_pos += block_len;
       keccak(this.buffer);
       remaining -= block_len;
     }
 
-    for (int i = 0; i < remaining; i++) {
-      out[i + out_pos] = (byte) ((this.buffer[i >> 3] >> ((i & 0b111) << 3)) & 0xFF);
-    }
+    // for (int i = 0; i < remaining; i++) {
+    //   out[i + out_pos] = (byte) ((this.buffer[i >>> 3] >>> ((i & 0b111) << 3)) & 0xFF);
+    // }
 
     System.err.println("Array: " + Arrays.toString(out));
 
@@ -176,7 +172,7 @@ public class SHA3SHAKE {
   * @return the out buffer containing the desired hash value.
   */
   public static byte[] SHA3(int suffix, byte[] X, byte[] out) {
-    assert out.length == suffix >> 3;
+    assert out.length == suffix >>> 3;
 
     final SHA3SHAKE sha = new SHA3SHAKE();
     sha.init(suffix);
@@ -196,7 +192,7 @@ public class SHA3SHAKE {
   * @return the out buffer containing the desired hash value.
   */
   public static byte[] SHAKE(int suffix, byte[] X, int L, byte[] out) {
-    final int length_bytes = L >> 3;
+    final int length_bytes = L >>> 3;
     assert out.length >= length_bytes;
 
     final SHA3SHAKE sha = new SHA3SHAKE();
@@ -254,67 +250,67 @@ public class SHA3SHAKE {
   * One round of the sha-3 keccak algorithm
   */
   private static void rnd(long[] data, int index) {
-    // Theta: columns mix
-      long[] C = new long[5];
-      for (int i = 0; i < 5; i++) {
-          C[i] = data[i] ^ data[i + 5] ^ data[i + 10] ^ data[i + 15] ^ data[i + 20];
-      }
-      // direction
-      long[] D = new long[5];
-      for (int x = 0; x < 5; x++) {
-          D[x] = rotl64(C[(x + 1) % 5], 1) ^ C[(x + 4) % 5];
-      }
-      for (int y = 0; y < 5; y++) {
-          int row = 5 * y;
-          data[row + 0] ^= D[0];
-          data[row + 1] ^= D[1];
-          data[row + 2] ^= D[2];
-          data[row + 3] ^= D[3];
-          data[row + 4] ^= D[4];
-      }
-    // Rho + Pi
-      long[] B = new long[25];
-      for (byte y = 0; y < 5; y++) {
-          for (int x = 0; x < 5; x++) {
-              // source lane index
-              int src = 5 * y + x;
-              // x prime
-              int xp = y;
-              //y prime
-              int yp = (2 * x + 3 * y) % 5;
-              // x', y' in 5x5 grid
-              int dst = 5 * yp + xp;
-              // rho rotation
-              B[dst] = rotl64(data[src], Rotate[src]);
-          }
-      }
-    // Chi
-      for (int y = 0; y < 5; y++) {
-//          long[] st = new long[5];
-//          for (int x = 0; x < 5; x++) {
-//              st[x] = data[y + x];
-//          }
-//          for (int x = 0; x < 5; x++) {
-//              data[y + x] = st[x] ^ ((~st[(x + 1) % 5]) & st[(x + 2) % 5]);
-//          }
-          // This is more efficient.
-          // start index of rows
-          int st = 5 * y;
-          // b0-4 = A[x,y] because we are working in the B array we don't need to apply z.
-          long b0 = B[st + 0];
-          long b1 = B[st + 1];
-          long b2 = B[st + 2];
-          long b3 = B[st + 3];
-          long b4 = B[st + 4];
-          // Output A'
-          data[st + 0] = b0 ^ ((~b1) & b2);
-          data[st + 1] = b1 ^ ((~b2) & b3);
-          data[st + 2] = b2 ^ ((~b3) & b4);
-          data[st + 3] = b3 ^ ((~b4) & b0);
-          data[st + 4] = b4 ^ ((~b0) & b1);
+//     // Theta: columns mix
+//       long[] C = new long[5];
+//       for (int i = 0; i < 5; i++) {
+//           C[i] = data[i] ^ data[i + 5] ^ data[i + 10] ^ data[i + 15] ^ data[i + 20];
+//       }
+//       // direction
+//       long[] D = new long[5];
+//       for (int x = 0; x < 5; x++) {
+//           D[x] = rotl64(C[(x + 1) % 5], 1) ^ C[(x + 4) % 5];
+//       }
+//       for (int y = 0; y < 5; y++) {
+//           int row = 5 * y;
+//           data[row + 0] ^= D[0];
+//           data[row + 1] ^= D[1];
+//           data[row + 2] ^= D[2];
+//           data[row + 3] ^= D[3];
+//           data[row + 4] ^= D[4];
+//       }
+//     // Rho + Pi
+//       long[] B = new long[25];
+//       for (byte y = 0; y < 5; y++) {
+//           for (int x = 0; x < 5; x++) {
+//               // source lane index
+//               int src = 5 * y + x;
+//               // x prime
+//               int xp = y;
+//               //y prime
+//               int yp = (2 * x + 3 * y) % 5;
+//               // x', y' in 5x5 grid
+//               int dst = 5 * yp + xp;
+//               // rho rotation
+//               B[dst] = rotl64(data[src], Rotate[src]);
+//           }
+//       }
+//     // Chi
+//       for (int y = 0; y < 5; y++) {
+// //          long[] st = new long[5];
+// //          for (int x = 0; x < 5; x++) {
+// //              st[x] = data[y + x];
+// //          }
+// //          for (int x = 0; x < 5; x++) {
+// //              data[y + x] = st[x] ^ ((~st[(x + 1) % 5]) & st[(x + 2) % 5]);
+// //          }
+//           // This is more efficient.
+//           // start index of rows
+//           int st = 5 * y;
+//           // b0-4 = A[x,y] because we are working in the B array we don't need to apply z.
+//           long b0 = B[st + 0];
+//           long b1 = B[st + 1];
+//           long b2 = B[st + 2];
+//           long b3 = B[st + 3];
+//           long b4 = B[st + 4];
+//           // Output A'
+//           data[st + 0] = b0 ^ ((~b1) & b2);
+//           data[st + 1] = b1 ^ ((~b2) & b3);
+//           data[st + 2] = b2 ^ ((~b3) & b4);
+//           data[st + 3] = b3 ^ ((~b4) & b0);
+//           data[st + 4] = b4 ^ ((~b0) & b1);
 
-      }
-    // Iota
-      data[0] ^= roundConstants[index];
+//       }
+//     // Iota
+//       data[0] ^= roundConstants[index];
   }
 }
