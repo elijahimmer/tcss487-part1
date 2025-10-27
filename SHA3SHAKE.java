@@ -26,6 +26,11 @@ public class SHA3SHAKE {
   * @param suffix SHA-3/SHAKE suffix (SHA-3 digest bitlength = suffix, SHAKE sec level = suffix)
   */
   public void init(int suffix) {
+    if (suffix != 128
+     && suffix != 256
+     && suffix != 384
+     && suffix != 512) throw new IllegalArgumentException("Invalid suffix.");
+
     if (this.buffer == null)
       this.buffer = new long[BUFFER_LEN];
     assert this.buffer.length == BUFFER_LEN;
