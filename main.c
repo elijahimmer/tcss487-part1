@@ -4,27 +4,47 @@
 
 #include "sha3.h"
 
-char hash_buf[224 >> 3];
+char hash_buf[28];
 
 int main(int argv, char **argc) {
-  // if (argv != 2) {
-  //   printf("usage: sha3shake <FILE>");
-  //   return 1;
-  // }
+  if (argv != 2) {
+    printf("usage: sha3shake <FILE>");
+    fflush(stdout);
+    return 1;
+  }
+  memset(hash_buf, sizeof hash_buf, 0);
 
-  char in[] = "";
+  char *fcontent = NULL;
+  int fsize = 0;
+  FILE *fp;
 
-  // 6B4E03423667DBB73B6E15454F0EB1ABD4597F9A1B078E3F5B5A6BC7
-  // 6B4E03423667DBB73B6E15454F0EB1ABD4597F9A1B078E3F5B5A6BC7
+  fp = fopen(argc[1], "r");
+  if (!fp) {
+    perror("fopen");
+    exit(1);
+  }
 
-  // 2F1A5F7159E34EA19CDDC70EBF9B81F1A66DB40615D7EAD3CC1F1B954D82A3AF
-  // 6C6240725650084B4727C448673349DF04950D0D0513C28361FFE582290B41C8
+  fseek(fp, 0, SEEK_END);
+  fsize = ftell(fp);
+  rewind(fp);
 
-  sha3(in, strlen(in), hash_buf, sizeof(hash_buf));
+  fcontent = (char*) malloc(sizeof(char) * (fsize + 1));
+  fsize = fread(fcontent, 1, fsize, fp);
 
-  for (int i = 0; i < sizeof(hash_buf); i++)
+  fclose(fp);
+
+  fcontent[fsize] = 0;
+
+  sha3_ctx_t sha3;
+
+  sha3_init(&sha3, sizeof hash_buf);
+  sha3_update(&sha3, fcontent, fsize);
+  sha3_final(hash_buf, &sha3);
+
+  for (int i = 0; i < sizeof hash_buf; i++) {
     printf("%02X", (unsigned char) hash_buf[i]);
-  printf("\n");
+  }
+  printf(" %s\n", argc[1]);
 
   return 0;
 

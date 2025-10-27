@@ -5,6 +5,7 @@
 // Revised 03-Sep-15 for portability + OpenSSL - style API
 
 #include "sha3.h"
+#include <stdio.h>
 
 // update the state with given number of rounds
 
@@ -34,39 +35,39 @@ void sha3_keccakf(uint64_t st[25])
     int i, j, r;
     uint64_t t, bc[5];
 
-    // // actual iteration
-    // for (r = 0; r < KECCAKF_ROUNDS; r++) {
+    // actual iteration
+    for (r = 0; r < KECCAKF_ROUNDS; r++) {
 
-    //     // Theta
-    //     for (i = 0; i < 5; i++)
-    //         bc[i] = st[i] ^ st[i + 5] ^ st[i + 10] ^ st[i + 15] ^ st[i + 20];
+        // Theta
+        for (i = 0; i < 5; i++)
+            bc[i] = st[i] ^ st[i + 5] ^ st[i + 10] ^ st[i + 15] ^ st[i + 20];
 
-    //     for (i = 0; i < 5; i++) {
-    //         t = bc[(i + 4) % 5] ^ ROTL64(bc[(i + 1) % 5], 1);
-    //         for (j = 0; j < 25; j += 5)
-    //             st[j + i] ^= t;
-    //     }
+        for (i = 0; i < 5; i++) {
+            t = bc[(i + 4) % 5] ^ ROTL64(bc[(i + 1) % 5], 1);
+            for (j = 0; j < 25; j += 5)
+                st[j + i] ^= t;
+        }
 
-    //     // Rho Pi
-    //     t = st[1];
-    //     for (i = 0; i < 24; i++) {
-    //         j = keccakf_piln[i];
-    //         bc[0] = st[j];
-    //         st[j] = ROTL64(t, keccakf_rotc[i]);
-    //         t = bc[0];
-    //     }
+        // Rho Pi
+        t = st[1];
+        for (i = 0; i < 24; i++) {
+            j = keccakf_piln[i];
+            bc[0] = st[j];
+            st[j] = ROTL64(t, keccakf_rotc[i]);
+            t = bc[0];
+        }
 
-    //     //  Chi
-    //     for (j = 0; j < 25; j += 5) {
-    //         for (i = 0; i < 5; i++)
-    //             bc[i] = st[j + i];
-    //         for (i = 0; i < 5; i++)
-    //             st[j + i] ^= (~bc[(i + 1) % 5]) & bc[(i + 2) % 5];
-    //     }
+        //  Chi
+        for (j = 0; j < 25; j += 5) {
+            for (i = 0; i < 5; i++)
+                bc[i] = st[j + i];
+            for (i = 0; i < 5; i++)
+                st[j + i] ^= (~bc[(i + 1) % 5]) & bc[(i + 2) % 5];
+        }
 
-    //     //  Iota
-    //     st[0] ^= keccakf_rndc[r];
-    // }
+        //  Iota
+        st[0] ^= keccakf_rndc[r];
+    }
 }
 
 // Initialize the context for SHA3
@@ -111,7 +112,7 @@ int sha3_final(void *md, sha3_ctx_t *c)
     int i;
 
     c->st.b[c->pt] ^= 0x06;
-    c->st.b[c->rsiz - 1] ^= 0x80;
+    c->st.b[c->rsiz - 1] = 0x80;
     sha3_keccakf(c->st.q);
 
     for (i = 0; i < c->mdlen; i++) {
