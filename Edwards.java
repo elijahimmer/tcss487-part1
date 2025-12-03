@@ -19,7 +19,15 @@ public class Edwards {
   * @param y y-coordinate of presumed point on the curve
   * @return whether P is really a point on the curve
   */
-  public boolean isPoint(BigInteger x, BigInteger y) { /* ... */ }
+  public boolean isPoint(BigInteger x, BigInteger y) { /* ... */
+    BigInteger x2 = x.multiply(x).mod(p);
+    BigInteger y2 = y.multiply(y).mod(p);
+    BigInteger x2y2 = x2.multiply(y2).mod(p);
+    BigInteger sumx2y2 = x2.add(y2).mod(p);
+    BigInteger curveEq = BigMatrix.ONE.add(d.multiply(x2y2)).mod(p);
+
+    return sumx2y2.equals(curveEq);
+  }
   
   /**
   * Find a generator G on the curve with the smallest possible
