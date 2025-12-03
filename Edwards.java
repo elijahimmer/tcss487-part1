@@ -1,7 +1,11 @@
+import java.math.BigInteger;
 /**
 * Arithmetic on Edwards elliptic curves.
 */
 public class Edwards {
+    public static final BigInteger p = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.valueOf(189));
+    public static final BigInteger d = BigInteger.valueOf(15343);
+    public static final BigInteger r = BigInteger.ONE.shiftLeft(254).subtract(new BigInteger("87175310462106073678594642380840586067"));
 /**
 * Create an instance of the default curve NUMS-256.
 */
@@ -92,13 +96,39 @@ public Point add(Point P) { /* ... */ }
 * @param m a scalar factor (an integer mod the curve order)
 * @return m*P
 */
-public Point mul(BigInteger m) { /* ... */ }
+public Point mul(BigInteger m) {
+    m = m.mod(r);
+    if (m.signum() == 0) {
+        return new Point();
+    }
+    Point V = new Point();
+    Point P = this;
+
+    for (int i = m.bitLength() - 1; i >= 0; i--) {
+        V = V.add(V);
+        if (m.testBit(i)) {
+            V = V.add(P);
+        }
+    }
+    return V;
+}
 /**
 * Display a human-readable representation of this point.
 *
 * @return a string of form "(x, y)" where x and y are
 * the coordinates of this point
 */
+public static BigInteger sqrt(BigInteger v, BigInteger p, boolean lsb) {
+    assert (p.testBit(0) && p.testBit(1));
+    if (v.signum() == 0) {
+        return BitInteger.ZERO;
+    }
+    BigInteger r = v.modPow(p.shiftRIght(2).add(BigInteger.ONE), p);
+    if (r.testBit(0) != lsb) {
+        r = p.subtract(r);
+    }
+    return (r.multiply(r).subtract(v).mod(p).signum() == 0) ? r : null;
+}
 public String toString() { /* ... */ }
 }
 }
