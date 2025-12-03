@@ -3,61 +3,63 @@ import java.math.BigInteger;
 * Arithmetic on Edwards elliptic curves.
 */
 public class Edwards {
-    public static final BigInteger p = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.valueOf(189));
-    public static final BigInteger d = BigInteger.valueOf(15343);
-    public static final BigInteger r = BigInteger.ONE.shiftLeft(254).subtract(new BigInteger("87175310462106073678594642380840586067"));
-/**
-* Create an instance of the default curve NUMS-256.
-*/
-public Edwards() { /* ... */ }
-
-/**
-* Determine if a given affine coordinate pair P = (x, y)
-* defines a point on the curve.
-*
-* @param x x-coordinate of presumed point on the curve
-* @param y y-coordinate of presumed point on the curve
-* @return whether P is really a point on the curve
-*/
-public boolean isPoint(BigInteger x, BigInteger y) { /* ... */ }
-
-/**
-* Find a generator G on the curve with the smallest possible
-* y-coordinate in absolute value.
-*
-* @return G.
-*/
-public Point gen() { /* ... */ }
-
-/**
-* Create a point from its y-coordinate and
-* the least significant bit (LSB) of its x-coordinate.
-*
-* @param y the y-coordinate of the desired point
-* @param x_lsb the LSB of its x-coordinate
-* @return point (x, y) if it exists and has order r,
-* otherwise the neutral element O = (0, 1)
-*/
-public Point getPoint(BigInteger y, boolean x_lsb) { /* ... */ }
-
-/**
-* Display a human-readable representation of this curve.
-*
-* @return a string of form "E: x^2 + y^2 = 1 + d*x^2*y^2 mod p"
-* where E is a suitable curve name (e.g. NUMS ed-256-mers*),
-* d is the actual curve equation coefficient defining this curve,
-* and p is the order of the underlying finite field F_p.
-*/
-public String toString() { /* ... */ }
-
-/**
-* Edwards curve point in affine coordinates.
-* NB: this is a nested class, enclosed within the Edwards class.
-*/
-public class Point {
+  public static final BigInteger p = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.valueOf(189));
+  public static final BigInteger d = BigInteger.valueOf(15343);
+  public static final BigInteger r = BigInteger.ONE.shiftLeft(254).subtract(new BigInteger("87175310462106073678594642380840586067"));
+  /**
+  * Create an instance of the default curve NUMS-256.
+  */
+  public Edwards() { /* ... */ }
+  
+  /**
+  * Determine if a given affine coordinate pair P = (x, y)
+  * defines a point on the curve.
+  *
+  * @param x x-coordinate of presumed point on the curve
+  * @param y y-coordinate of presumed point on the curve
+  * @return whether P is really a point on the curve
+  */
+  public boolean isPoint(BigInteger x, BigInteger y) { /* ... */ }
+  
+  /**
+  * Find a generator G on the curve with the smallest possible
+  * y-coordinate in absolute value.
+  *
+  * @return G.
+  */
+  public Point gen() { /* ... */ }
+  
+  /**
+  * Create a point from its y-coordinate and
+  * the least significant bit (LSB) of its x-coordinate.
+  *
+  * @param y the y-coordinate of the desired point
+  * @param x_lsb the LSB of its x-coordinate
+  * @return point (x, y) if it exists and has order r,
+  * otherwise the neutral element O = (0, 1)
+  */
+  public Point getPoint(BigInteger y, boolean x_lsb) { /* ... */
+    
+  }
+  
+  /**
+  * Display a human-readable representation of this curve.
+  *
+  * @return a string of form "E: x^2 + y^2 = 1 + d*x^2*y^2 mod p"
+  * where E is a suitable curve name (e.g. NUMS ed-256-mers*),
+  * d is the actual curve equation coefficient defining this curve,
+  * and p is the order of the underlying finite field F_p.
+  */
+  public String toString() { /* ... */ }
+  
+  /**
+  * Edwards curve point in affine coordinates.
+  * NB: this is a nested class, enclosed within the Edwards class.
+  */
+  public class Point {
     public final BigInteger x;
     public final BigInteger y;
-    
+      
     /**
     * Create a copy of the neutral element on this curve.
     */
@@ -75,8 +77,7 @@ public class Point {
     * @param y the y-coordinate of the desired point
     */
     private Point(BigInteger x, BigInteger y) { /* ... */
-      this.x = x;
-      this.y = y;
+      this.x = x;      this.y = y;
     }
     
     /**
@@ -106,7 +107,7 @@ public class Point {
     * @return -P
     */
     public Point negate() {
-      BigInteger negateX = x.negate().mod(p);
+        BigInteger negateX = x.negate().mod(p);
       return new Point(negateX, y);
     }
     
@@ -129,7 +130,7 @@ public class Point {
       BigInteger denom2 = BigInteger.ONE.subtract(d.multiply(x1.multiply(x2.multiply(y1.multiply(y2)))));
       BigInteger x3 = num1.multiply(denom1.modInverse(p)).mod(p);
       BigInteger y3 = num2.multiply(denom2.modInverse(p)).mod(p);
-
+  
       return new Point(x3, y3);
     }
     
@@ -140,20 +141,20 @@ public class Point {
     * @return m*P
     */
     public Point mul(BigInteger m) {
-        m = m.mod(r);
-        if (m.signum() == 0) {
-            return new Point();
-        }
-        Point V = new Point();
-        Point P = this;
+      m = m.mod(r);
+      if (m.signum() == 0) {
+        return new Point();
+      }
+      Point V = new Point();
+      Point P = this;
     
-        for (int i = m.bitLength() - 1; i >= 0; i--) {
-            V = V.add(V);
-            if (m.testBit(i)) {
-                V = V.add(P);
-            }
+      for (int i = m.bitLength() - 1; i >= 0; i--) {
+        V = V.add(V);
+        if (m.testBit(i)) {
+          V = V.add(P);
         }
-        return V;
+      }
+      return V;
     }
         
     /**
@@ -163,15 +164,15 @@ public class Point {
     * the coordinates of this point
     */
     public static BigInteger sqrt(BigInteger v, BigInteger p, boolean lsb) {
-        assert (p.testBit(0) && p.testBit(1));
-        if (v.signum() == 0) {
-            return BitInteger.ZERO;
-        }
-        BigInteger r = v.modPow(p.shiftRIght(2).add(BigInteger.ONE), p);
-        if (r.testBit(0) != lsb) {
-            r = p.subtract(r);
-        }
-        return (r.multiply(r).subtract(v).mod(p).signum() == 0) ? r : null;
+      assert (p.testBit(0) && p.testBit(1));
+      if (v.signum() == 0) {
+        return BitInteger.ZERO;
+      }
+      BigInteger r = v.modPow(p.shiftRIght(2).add(BigInteger.ONE), p);
+      if (r.testBit(0) != lsb) {
+        r = p.subtract(r);
+      }
+      return (r.multiply(r).subtract(v).mod(p).signum() == 0) ? r : null;
     }
     /**
     * Display a human-readable representation of this point.
@@ -183,4 +184,4 @@ public class Point {
       return "(" + x + ", " + "y" + ")";
     }
   }
-}
+}  
