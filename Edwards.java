@@ -85,7 +85,7 @@ public class Point {
     * @return true iff this point is O
     */
     public boolean isZero() { /* ... */
-      return this.x.equals(BigInteger.Zero) && y.equals(BigInteger.ONE);
+      return this.x.equals(BigInteger.ZERO) && y.equals(BigInteger.ONE);
     }
     
     /**
