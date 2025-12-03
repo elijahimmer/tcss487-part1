@@ -7,10 +7,12 @@ public class Edwards {
   public static final BigInteger p = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.valueOf(189));
   public static final BigInteger d = BigInteger.valueOf(15343);
   public static final BigInteger r = BigInteger.ONE.shiftLeft(254).subtract(new BigInteger("87175310462106073678594642380840586067"));
+  public static final Point G = Point.fromY(BigInteger.valueOf(-4));
+
   /**
    * Create an instance of the default curve NUMS-256.
    */
-  public Edwards() { /* ... */ }
+  public Edwards() {}
 
   /**
    * Determine if a given affine coordinate pair P = (x, y)
@@ -20,12 +22,12 @@ public class Edwards {
    * @param y y-coordinate of presumed point on the curve
    * @return whether P is really a point on the curve
    */
-  public boolean isPoint(BigInteger x, BigInteger y) { /* ... */
+  public boolean isPoint(BigInteger x, BigInteger y) {
     BigInteger x2 = x.multiply(x).mod(p);
     BigInteger y2 = y.multiply(y).mod(p);
     BigInteger x2y2 = x2.multiply(y2).mod(p);
     BigInteger sumx2y2 = x2.add(y2).mod(p);
-    BigInteger curveEq = BigMatrix.ONE.add(d.multiply(x2y2)).mod(p);
+    BigInteger curveEq = BigInteger.ONE.add(d.multiply(x2y2)).mod(p);
 
     return sumx2y2.equals(curveEq);
   }
@@ -36,7 +38,9 @@ public class Edwards {
    *
    * @return G.
    */
-  public Point gen() { /* ... */ }
+  public Point gen() {
+    return G;
+  }
 
   /**
    * Create a point from its y-coordinate and
@@ -47,8 +51,9 @@ public class Edwards {
    * @return point (x, y) if it exists and has order r,
    * otherwise the neutral element O = (0, 1)
    */
-  public Point getPoint(BigInteger y, boolean x_lsb) { /* ... */
-
+  public Point getPoint(BigInteger y, boolean x_lsb) {
+    // TODO(Elijah): finish this
+    return new Point();
   }
 
   /**
@@ -58,14 +63,29 @@ public class Edwards {
    * where E is a suitable curve name (e.g. NUMS ed-256-mers*),
    * d is the actual curve equation coefficient defining this curve,
    * and p is the order of the underlying finite field F_p.
+   * TODO(Elijah): Finish this
    */
-  public String toString() { /* ... */ }
+  public String toString() {
+    return "NUMS ed-256-mers*: x^2 + y^2 = 1 + " + d + "*x^2*y^2 mod p";
+  }
+
+  public static BigInteger sqrt(BigInteger v, BigInteger p, boolean lsb) {
+    assert (p.testBit(0) && p.testBit(1));
+    if (v.signum() == 0) {
+      return BigInteger.ZERO;
+    }
+    BigInteger r = v.modPow(p.shiftRight(2).add(BigInteger.ONE), p);
+    if (r.testBit(0) != lsb) {
+      r = p.subtract(r);
+    }
+    return (r.multiply(r).subtract(v).mod(p).signum() == 0) ? r : null;
+  }
 
   /**
    * Edwards curve point in affine coordinates.
    * NB: this is a nested class, enclosed within the Edwards class.
    */
-  public class Point {
+  public static class Point {
     public final BigInteger x;
     public final BigInteger y;
 
@@ -73,7 +93,6 @@ public class Edwards {
      * Create a copy of the neutral element on this curve.
      */
     public Point() {
-      /* ... */
       this.x = BigInteger.ZERO;
       this.y = BigInteger.ONE;
     }
@@ -85,8 +104,16 @@ public class Edwards {
      * @param x the x-coordinate of the desired point
      * @param y the y-coordinate of the desired point
      */
-    private Point(BigInteger x, BigInteger y) { /* ... */
-      this.x = x;      this.y = y;
+    private Point(final BigInteger x, final BigInteger y) {
+      this.x = x; this.y = y;
+    }
+
+    public static Point fromY(final BigInteger y) {
+      assert !y.equals(BigInteger.valueOf(-1));
+      final BigInteger a1 = y.modPow(BigInteger.TWO, p).negate().add(BigInteger.ONE).mod(p);
+      final BigInteger a2 = y.modPow(BigInteger.TWO, p).multiply(d).negate().add(BigInteger.ONE).mod(p);
+      final BigInteger x = a1.modPow(a2.modInverse(p), p).sqrt().mod(p);
+      return new Point(x,y);
     }
 
     /**
@@ -94,7 +121,7 @@ public class Edwards {
      *
      * @return true iff this point is O
      */
-    public boolean isZero() { /* ... */
+    public boolean isZero() {
       return this.x.equals(BigInteger.ZERO) && y.equals(BigInteger.ONE);
     }
 
@@ -105,8 +132,8 @@ public class Edwards {
      * @param P a point (presumably on the same curve as this)
      * @return true iff P stands for the same point as this
      */
-    public boolean equals(Point P) { /* ... */
-      return this.x.equal(P.x) && this.y.equals(P.y)
+    public boolean equals(Point P) {
+      return this.x.equals(P.x) && this.y.equals(P.y);
     }
 
     /**
@@ -172,25 +199,8 @@ public class Edwards {
      * @return a string of form "(x, y)" where x and y are
      * the coordinates of this point
      */
-    public static BigInteger sqrt(BigInteger v, BigInteger p, boolean lsb) {
-      assert (p.testBit(0) && p.testBit(1));
-      if (v.signum() == 0) {
-        return BitInteger.ZERO;
-      }
-      BigInteger r = v.modPow(p.shiftRIght(2).add(BigInteger.ONE), p);
-      if (r.testBit(0) != lsb) {
-        r = p.subtract(r);
-      }
-      return (r.multiply(r).subtract(v).mod(p).signum() == 0) ? r : null;
-    }
-    /**
-     * Display a human-readable representation of this point.
-     *
-     * @return a string of form "(x, y)" where x and y are
-     * the coordinates of this point
-     */
     public String toString() {
-      return "(" + x + ", " + "y" + ")";
+      return "(" + x + ", " + y + ")";
     }
   }
 }

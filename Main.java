@@ -1,4 +1,5 @@
 import java.io.File;
+import java.io.FileWriter;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -15,6 +16,11 @@ public class Main {
       case "sha3" -> sha3(args);
       case "shake-random" -> shake_random(args);
       case "shake-encrypt" -> shake_encrypt(args);
+      case "ec-keygen" -> ec_keygen(args);
+      case "ec-encrypt" -> ec_encrypt(args);
+      case "ec-decrypt" -> ec_decrypt(args);
+      case "ec-sign" -> ec_sign(args);
+      case "ec-verify" -> ec_verify(args);
       default -> {
         System.err.println(USAGE);
         System.exit(1);
@@ -120,11 +126,52 @@ public class Main {
     System.out.write(contents);
   }
 
-  static final String EC_KEYGEN_USAGE = "usage: sha3shake ec-keygen [FILE]\n";
+  static final String EC_KEYGEN_USAGE = "usage: sha3shake ec-keygen <KEY_FILE>\n";
+  static void ec_keygen(String[] args) throws IOException {
+    if (args.length != 2) {
+      System.err.printf(EC_KEYGEN_USAGE);
+      System.exit(1);
+    }
+
+    final String private_file_name = args[1];
+    final String public_file_name = args[1] + ".pub";
+
+    final FileWriter private_file = new FileWriter(private_file_name);
+    final FileWriter public_file = new FileWriter(public_file_name);
+  }
+
   static final String EC_ENCRYPT_USAGE = "usage: sha3shake ec-encrypt <KEY_FILE> <FILE>\n";
+  static void ec_encrypt(String[] args) {
+    if (args.length != 3) {
+      System.err.printf(EC_ENCRYPT_USAGE);
+      System.exit(1);
+    }
+  }
+
   static final String EC_DECRYPT_USAGE = "usage: sha3shake ec-decrypt <KEY_FILE> <FILE>\n";
+  static void ec_decrypt(String[] args) {
+    if (args.length != 3) {
+      System.err.printf(EC_DECRYPT_USAGE);
+      System.exit(1);
+    }
+  }
+
   static final String EC_SIGN_USAGE = "usage: sha3shake ec-sign <KEY_FILE> <FILE>\n";
+  static void ec_sign(String[] args) {
+    if (args.length != 3) {
+      System.err.printf(EC_SIGN_USAGE);
+      System.exit(1);
+    }
+  }
+
   static final String EC_VERIFY_USAGE = "usage: sha3shake ec-verify <KEY_FILE> <FILE>\n";
+  static void ec_verify(String[] args) {
+    if (args.length != 3) {
+      System.err.printf(EC_VERIFY_USAGE);
+      System.exit(1);
+    }
+  }
+
   static final String USAGE =
         SHA3_USAGE + SHAKE_RANDOM_USAGE + SHAKE_ENCRYPT_USAGE + EC_KEYGEN_USAGE +
         EC_ENCRYPT_USAGE + EC_DECRYPT_USAGE + EC_SIGN_USAGE + EC_VERIFY_USAGE ;

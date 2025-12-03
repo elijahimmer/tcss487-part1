@@ -8,7 +8,7 @@ c-run *ARGS:
     ./{{C_EXEC}} {{ARGS}}
 
 java-compile:
-    javac -d {{CLASS_PATH}} Main.java SHA3SHAKE.java
+    javac -d {{CLASS_PATH}} Main.java SHA3SHAKE.java Edwards.java
 
 java-run *ARGS: java-compile
     java -cp {{CLASS_PATH}} Main {{ARGS}}
