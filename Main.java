@@ -5,7 +5,6 @@ import java.nio.file.Files;
 import java.util.Arrays;
 
 public class Main {
-
   public static void main(String[] args) throws IOException {
     if (args.length == 0) {
       System.err.println(USAGE);
@@ -24,7 +23,6 @@ public class Main {
   }
 
   static final String SHA3_USAGE = "usage: sha3shake sha3 <SECURITY_LEVEL_BITS> <FILE>\n";
-
   static void sha3(String[] args) throws IOException {
     if (args.length != 3) {
         System.err.printf(SHA3_USAGE);
@@ -61,7 +59,6 @@ public class Main {
   }
 
   static final String SHAKE_RANDOM_USAGE = "usage: sha3shake shake-random <SECURITY_LEVEL_BITS> <SEED> <LEN>\n";
-
   static void shake_random(String[] args) {
     if (args.length != 4) {
         System.err.printf(SHAKE_RANDOM_USAGE);
