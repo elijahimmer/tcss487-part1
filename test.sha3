@@ -1,2 +1,3 @@
 Not enough arguments!
 usage: sha3shake sha <SECURITY_LEVEL_BITS> <FILE>
+usage: sha3shake shake <SECURITY_LEVEL_BITS> <OUTPUT_BYTES> <SEED>

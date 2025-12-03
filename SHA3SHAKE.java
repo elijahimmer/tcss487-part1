@@ -18,14 +18,27 @@ public class SHA3SHAKE {
   */
   private int digest_length;
 
+  private boolean is_shake;
+  private int absorb_pos;
+  private int squeeze_pos;
+
   public SHA3SHAKE() {}
+
+  /**
+  * Initialize the SHA-3 sponge.
+  * The suffix must be one of 224, 256, 384, or 512 for SHA-3, or one of 128 or 256 for SHAKE.
+  * @param suffix SHA-3/SHAKE suffix (SHA-3 digest bitlength = suffix, SHAKE sec level = suffix)
+  */
+  public void init(int suffix) {
+    init(suffix, false);
+  }
 
   /**
   * Initialize the SHA-3/SHAKE sponge.
   * The suffix must be one of 224, 256, 384, or 512 for SHA-3, or one of 128 or 256 for SHAKE.
   * @param suffix SHA-3/SHAKE suffix (SHA-3 digest bitlength = suffix, SHAKE sec level = suffix)
   */
-  public void init(int suffix) {
+  public void init(int suffix, boolean isShake) {
     if (suffix != 128
      && suffix != 256
      && suffix != 384
@@ -40,6 +53,9 @@ public class SHA3SHAKE {
       this.buffer[i] = 0;
 
     this.digest_length = suffix >>> 3;
+    this.is_shake = isShake;
+    this.absorb_pos = 0;
+    this.squeeze_pos = 0;
   }
 
   /**
@@ -52,24 +68,18 @@ public class SHA3SHAKE {
   public void absorb(byte[] data, int pos, int len) {
     assert data != null;
     assert this.buffer != null;
+    assert this.absorb_pos >= 0;
 
-    int i, j = 0;
+    int i = 0;
     int rsize = 200 - 2 * this.digest_length;
     for (i = pos; i < len; i += 1) {
-      this.buffer[j >>> 3] ^= ((long) data[i]) << (((j & 0b111) << 3));
+      this.buffer[this.absorb_pos >>> 3] ^= ((long) data[i]) << (((this.absorb_pos & 0b111) << 3));
 
-      j += 1;
-      if (j >= rsize) {
-        j = 0;
+      this.absorb_pos += 1;
+      if (this.absorb_pos >= rsize) {
+        this.absorb_pos = 0;
         keccak(this.buffer);
       }
-    }
-
-    if (data.length == 0 || j != 0) {
-      this.buffer[j >>> 3] ^= 0x06L << (((j & 0b111) << 3));
-      this.buffer[(rsize >>> 3) - 1] = (0x80L << 56) | (this.buffer[(rsize >>> 3) - 1] & 0xFF_FF_FF_FF_FF_FF_FFL);
-
-      keccak(this.buffer);
     }
   }
 
@@ -103,23 +113,38 @@ public class SHA3SHAKE {
   public byte[] squeeze(final byte[] out, final int len) {
     assert out.length >= len;
     final int block_len = this.digest_length;
+    final int rsize = 200 - 2 * this.digest_length;
+
+    if (this.absorb_pos != 0) {
+      if (!this.is_shake) {
+        this.buffer[this.absorb_pos >>> 3] ^= 0x06L << (((this.absorb_pos & 0b111) << 3));
+        this.buffer[(rsize >>> 3) - 1] = (0x80L << 56) | (this.buffer[(rsize >>> 3) - 1] & 0xFF_FF_FF_FF_FF_FF_FFL);
+      } else {
+        this.buffer[this.absorb_pos >>> 3] ^= 0x1FL << (((this.absorb_pos & 0b111) << 3));
+        this.buffer[(rsize >>> 3) - 1] = (0x80L << 56) | (this.buffer[(rsize >>> 3) - 1] & 0xFF_FF_FF_FF_FF_FF_FFL);
+      }
+
+      keccak(this.buffer);
+      this.absorb_pos = 0;
+    }
 
     int remaining = len;
     int out_pos = 0;
 
     while (remaining >= block_len) {
-      for (int i = 0; i < block_len; i++) {
-        out[i + out_pos] = (byte) ((this.buffer[i >>> 3] >>> (((i & 0b111) << 3))) & 0xFF);
+      for (this.squeeze_pos = 0; this.squeeze_pos < block_len; this.squeeze_pos++) {
+        out[this.squeeze_pos + out_pos] = (byte) ((this.buffer[this.squeeze_pos >>> 3]
+          >>> (((this.squeeze_pos & 0b111) << 3))) & 0xFF);
       }
       out_pos += block_len;
-      // TODO(Elijah): Uncomment this.
-      // keccak(this.buffer);
+      keccak(this.buffer);
       remaining -= block_len;
     }
 
-    for (int i = 0; i < remaining; i++) {
-      out[i + out_pos] = (byte) ((this.buffer[i >>> 3] >>> (((i & 0b111) << 3))) & 0xFF);
+    for (this.squeeze_pos = 0; this.squeeze_pos < remaining; this.squeeze_pos++) {
+      out[this.squeeze_pos + out_pos] = (byte) ((this.buffer[this.squeeze_pos >>> 3] >>> (((this.squeeze_pos & 0b111) << 3))) & 0xFF);
     }
+    if (this.squeeze_pos == block_len) this.squeeze_pos = 0;
 
     return out;
   }
