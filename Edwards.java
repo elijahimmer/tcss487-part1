@@ -122,7 +122,7 @@ public class Edwards {
      * @param x the x-coordinate of the desired point
      * @param y the y-coordinate of the desired point
      */
-    private Point(final BigInteger x, final BigInteger y) {
+    public Point(final BigInteger x, final BigInteger y) {
       this.x = x; this.y = y;
     }
 

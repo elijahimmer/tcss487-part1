@@ -193,21 +193,22 @@ public class Main {
     final Edwards.Key key = Edwards.getKey(password.getBytes());
     final BigInteger s = key.s();
 
-    SecureRandom secRand = new SecureRandom();
-    byte[] randBytes = new byte[48];
+    final SecureRandom secRand = new SecureRandom();
+    final byte[] randBytes = new byte[48];
     secRand.nextBytes(randBytes);
-    BigInteger k = new BigInteger(randBytes).mod(Edwards.r);
 
+    final BigInteger k = new BigInteger(randBytes).mod(Edwards.r);
     Edwards.Point U = Edwards.G.mul(k);
     final byte[] Uy = U.y.toByteArray();
 
-    SHA3SHAKE sha256 = new SHA3SHAKE();
+    final SHA3SHAKE sha256 = new SHA3SHAKE();
     sha256.init(256);
     sha256.absorb(Uy);
     sha256.absorb(message);
-    byte[] digest = sha256.digest();
-    BigInteger h = new BigInteger(digest).mod(Edwards.r);
-    BigInteger z = k.subtract(h.multiply(s)).mod(Edwards.r);
+    final byte[] digest = sha256.digest();
+
+    final BigInteger h = new BigInteger(digest).mod(Edwards.r);
+    final BigInteger z = k.subtract(h.multiply(s)).mod(Edwards.r);
 
     System.out.println(h);
     System.out.println(z);
@@ -226,27 +227,27 @@ public class Main {
     final File file = new File(message_file);
     final byte[] message = Files.readAllBytes(file.toPath());
 
-    Scanner scanner = new Scanner(new File(pub_key_file));
-    BigInteger x = new BigInteger(scanner.nextLine());
-    BigInteger y = new BigInteger(scanner.nexLline());
+    final Scanner scanner = new Scanner(new File(pub_key_file));
+    final BigInteger x = new BigInteger(scanner.nextLine());
+    final BigInteger y = new BigInteger(scanner.nextLine());
 
-    Edwards.Point V = new Edwards.Point(x, y);
+    final Edwards.Point V = new Edwards.Point(x, y);
     scanner.close();
 
-    Scanner scanTwo = new Scanner(new File(sig_file));
-    BigInteger h = new BigInteger(scanTwo.nextline());
-    BigInteger z = new BigInteger(scanTwo.nextline());
+    final Scanner scanTwo = new Scanner(new File(sig_file));
+    final BigInteger h = new BigInteger(scanTwo.nextLine());
+    final BigInteger z = new BigInteger(scanTwo.nextLine());
     scanTwo.close();
-    Edwards.Point Ui = ((Edwards.G.mul(z)).add(V.mul(h)));
+    final Edwards.Point Ui = Edwards.G.mul(z).add(V.mul(h));
 
     final byte[] Uiy = Ui.y.toByteArray();
 
-    SHA3SHAKE sha256 = new SHA3SHAKE();
+    final SHA3SHAKE sha256 = new SHA3SHAKE();
     sha256.init(256);
     sha256.absorb(Uiy);
     sha256.absorb(message);
-    byte[] digest = sha256.digest();
-    BigInteger hi = new BigInteger(digest).mod(Edwards.r);
+    final byte[] digest = sha256.digest();
+    final BigInteger hi = new BigInteger(digest).mod(Edwards.r);
 
     if (hi.equals(h)) {
       System.out.println("VERIFIED");
@@ -258,5 +259,5 @@ public class Main {
 
   static final String USAGE =
         SHA3_USAGE + SHAKE_RANDOM_USAGE + SHAKE_ENCRYPT_USAGE + EC_KEYGEN_USAGE +
-        EC_ENCRYPT_USAGE + EC_DECRYPT_USAGE + EC_SIGN_USAGE + EC_VERIFY_USAGE ;
+        EC_ENCRYPT_USAGE + EC_DECRYPT_USAGE + EC_SIGN_USAGE + EC_VERIFY_USAGE;
 }
