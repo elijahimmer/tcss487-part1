@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.Scanner;
+
 public class Main {
   public static void main(String[] args) throws IOException {
     if (args.length == 0) {
@@ -157,7 +158,7 @@ public class Main {
       public_file.flush();
     }
   }
-
+// TODO: Grant
   static final String EC_ENCRYPT_USAGE = "usage: sha3shake ec-encrypt <KEY_FILE> <FILE>\n";
   static void ec_encrypt(String[] args) throws IOException {
     if (args.length != 3) {
@@ -165,10 +166,85 @@ public class Main {
       System.exit(1);
     }
 
+    final String key_base = args[1];
+    final String msg_file_name = args[2];
+
     final File public_key_file = new File(args[1] + ".pub");
     final byte[] public_key = Files.readAllBytes(public_key_file.toPath());
+    final String public_key_string = new String(public_key);
 
     final var output_file = new FileWriter(args[2] + ".bin");
+    // First line x, second line y.
+    final String[] lines = public_key_string.split("\\R");
+    if (lines.length < 2) {
+        System.err.printf("Invalid key file.");
+        System.exit(1);
+    }
+
+    BigInteger Vx = new BigInteger(lines[0], 16);
+    BigInteger Vy = new BigInteger(lines[1], 16);
+
+    // V from y and LSB of x using the curve.
+    final Edwards curve = new Edwards();
+    final boolean x_lsb = Vx.testBit(0);
+    final Edwards.Point V = curve.getPoint(Vy, x_lsb);
+
+    final File msg_file = new File(msg_file_name);
+    final byte[] m = Files.readAllBytes(msg_file.toPath());
+
+    final byte[] k_bytes = new byte[48]; // 384 bits.
+    new SecureRandom().nextBytes(k_bytes);
+    BigInteger k = new BigInteger(1, k_bytes).mod(Edwards.r);
+
+    // W = kV, Z = kG
+    final Edwards.Point W = V.mul(k);
+    final Edwards.Point Z = Edwards.G.mul(k);
+
+    // Convert contents to byte array.
+    final byte[] Wy = W.y.toByteArray();
+    final byte[] kk = new byte[64];
+    SHA3SHAKE.SHAKE(256, Wy, kk.length << 3, kk);
+
+    final byte[] ka = new byte[32];
+    final byte[] ke = new byte[32];
+    for (int i = 0; i < 32; i++) {
+        ka[i] = kk[i];
+        ke[i] = kk[32 + i];
+    }
+
+    // SHAKE on ke, m bytes, XOR with m to get c.
+    final byte[] ke_stream = new byte[m.length];
+    SHA3SHAKE.SHAKE(128, ke, ke_stream.length << 3, ke_stream);
+
+    final byte[] c = new byte[m.length];
+    for (int i = 0; i < m.length; i++) {
+        c[i] = (byte) (m[i] ^ ke_stream[i]);
+    }
+
+    //SHA3-256, absorb ka and then c, extract digest t.
+    final byte[] mac_input = new byte[ka.length + c.length];
+    System.arraycopy(ka, 0, mac_input, 0, ka.length);
+    System.arraycopy(c, 0, mac_input, ka.length, c.length);
+
+    final byte[] t = new byte[32];
+    SHA3SHAKE.SHA3(256, mac_input, t);
+
+    try (FileWriter fw = new FileWriter(msg_file_name + ".bin");
+         PrintWriter out = new PrintWriter(fw)) {
+
+        out.println(Z.x.toString(16));
+        out.println(Z.y.toString(16));
+
+        for (int i = 0; i < t.length; i++) {
+            out.printf("%02x", t[i]);
+        }
+        out.println();
+
+        for(int i = 0; i < c.length; i++) {
+            out.printf("%02x", c[i]);
+        }
+        out.println();
+    }
   }
 
   static final String EC_DECRYPT_USAGE = "usage: sha3shake ec-decrypt <KEY_FILE> <FILE>\n";
