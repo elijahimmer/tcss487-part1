@@ -247,9 +247,10 @@ public class SHA3SHAKE {
   * @param X data to be hashed
   * @param L desired output length in bits (must be a multiple of 8)
   * @param out hash value buffer (if null, this method allocates it with the required size)
+  * @param out_offset the byte ofset into the `out` buffer to start at
   * @return the out buffer containing the desired hash value.
   */
-  public static byte[] SHAKE(int suffix, byte[] X, int L, byte[] out) {
+  public static byte[] SHAKE(int suffix, byte[] X, int L, byte[] out, int out_offset) {
     final int length_bytes = L >>> 3;
     assert out.length >= length_bytes;
 
@@ -257,9 +258,22 @@ public class SHA3SHAKE {
     sha.init(suffix, true);
 
     sha.absorb(X);
-    sha.squeeze(out, length_bytes);
+    sha.squeeze(out, out_offset, length_bytes);
 
     return out;
+  }
+
+  /**
+  * Compute the streamlined SHAKE-<128,256> on input X with output bitlength L.
+  *
+  * @param suffix desired security level (either 128 or 256)
+  * @param X data to be hashed
+  * @param L desired output length in bits (must be a multiple of 8)
+  * @param out hash value buffer (if null, this method allocates it with the required size)
+  * @return the out buffer containing the desired hash value.
+  */
+  public static byte[] SHAKE(int suffix, byte[] X, int L, byte[] out) {
+    SHAKE(suffix, X, L, out);
   }
 
   /**
