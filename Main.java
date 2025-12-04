@@ -209,12 +209,12 @@ public class Main {
     BigInteger h = new BigInteger(digest).mod(Edwards.r);
     BigInteger z = k.subtract(h.multiply(s)).mod(Edwards.r);
 
-    System.out.print(h + "," + z);        
+    System.out.print(h + "," + z);
   }
 
-  static final String EC_VERIFY_USAGE = "usage: sha3shake ec-verify <KEY_FILE> <FILE>\n";
+  static final String EC_VERIFY_USAGE = "usage: sha3shake ec-verify <PUB_KEY_FILE> <SIGNATURE_FILE> <FILE>\n";
   static void ec_verify(String[] args) {
-    if (args.length != 3) {
+    if (args.length != 4) {
       System.err.printf(EC_VERIFY_USAGE);
       System.exit(1);
     }
