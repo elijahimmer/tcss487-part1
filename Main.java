@@ -131,7 +131,8 @@ public class Main {
     final var public_file = new PrintWriter(public_file_name);
 
     final Edwards.Key key = Edwards.getKey(password.getBytes());
-
+    final BigInteger s = key.s();
+    System.out.println("Private key s: " + s);
     {
       final byte[] bytes = key.s().toByteArray();
       for (int i = 0; i < bytes.length; i++) {
@@ -192,6 +193,7 @@ public class Main {
     final byte[] message = Files.readAllBytes(file.toPath());
     final Edwards.Key key = Edwards.getKey(password.getBytes());
     final BigInteger s = key.s();
+    System.out.println("Private key s: " + s);
 
     final SecureRandom secRand = new SecureRandom();
     final byte[] randBytes = new byte[48];
@@ -238,7 +240,7 @@ public class Main {
     final BigInteger h = new BigInteger(scanTwo.nextLine());
     final BigInteger z = new BigInteger(scanTwo.nextLine());
     scanTwo.close();
-    final Edwards.Point Ui = Edwards.G.mul(z).add(V.mul(h));
+    final Edwards.Point Ui = (Edwards.G.mul(z)).add(V.mul(h));
 
     final byte[] Uiy = Ui.y.toByteArray();
 
@@ -248,6 +250,8 @@ public class Main {
     sha256.absorb(message);
     final byte[] digest = sha256.digest();
     final BigInteger hi = new BigInteger(digest).mod(Edwards.r);
+    System.out.println(h);
+    System.out.println(hi);
 
     if (hi.equals(h)) {
       System.out.println("VERIFIED");
