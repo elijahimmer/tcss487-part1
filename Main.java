@@ -6,7 +6,6 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.math.BigInteger;
-import java.security.SecureRandom;
 
 public class Main {
   public static void main(String[] args) throws IOException {
@@ -130,23 +129,10 @@ public class Main {
     final var private_file = new PrintWriter(private_file_name);
     final var public_file = new PrintWriter(public_file_name);
 
-    final int rbytes = (Edwards.r.bitLength() + 7) >> 3;
-    final var k = new BigInteger(new SecureRandom().generateSeed(rbytes << 1)).mod(Edwards.r);
-
-    final byte[] out = new byte[48];
-
-    SHA3SHAKE.SHAKE(128, password.getBytes(), out.length, out);
-
-    BigInteger s = (new BigInteger(out)).mod(Edwards.r);
-    Edwards.Point V = Edwards.G.mul(s);
-
-    if (V.x.testBit(0)) {
-      s = Edwards.r.subtract(s);
-      V = V.negate();
-    }
+    final Edwards.Key key = Edwards.getKey(password.getBytes());
 
     {
-      final byte[] bytes = s.toByteArray();
+      final byte[] bytes = key.s().toByteArray();
       for (int i = 0; i < bytes.length; i++) {
         private_file.printf("%02x", bytes[i]);
       }
@@ -155,13 +141,13 @@ public class Main {
     }
 
     {
-      byte[] bytes = V.x.toByteArray();
+      byte[] bytes = key.V().x.toByteArray();
       for (int i = 0; i < bytes.length; i++) {
         public_file.printf("%02x", bytes[i]);
       }
       public_file.println();
 
-      bytes = V.y.toByteArray();
+      bytes = key.V().y.toByteArray();
       for (int i = 0; i < bytes.length; i++) {
         public_file.printf("%02x", bytes[i]);
       }

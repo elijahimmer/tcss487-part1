@@ -1,4 +1,5 @@
 import java.math.BigInteger;
+import java.security.SecureRandom;
 
 /**
  * Arithmetic on Edwards elliptic curves.
@@ -14,6 +15,26 @@ public class Edwards {
    */
   public Edwards() {}
 
+  public static record Key(BigInteger s, Point V) {}
+
+  public static Key getKey(byte[] password) {
+    final int rbytes = (Edwards.r.bitLength() + 7) >> 3;
+    final var k = new BigInteger(new SecureRandom().generateSeed(rbytes << 1)).mod(Edwards.r);
+
+    final byte[] out = new byte[48];
+    SHA3SHAKE.SHAKE(128, password, out.length, out);
+
+    BigInteger s = k.xor(new BigInteger(out)).mod(Edwards.r);
+    Point V = Edwards.G.mul(s);
+
+    if (V.x.testBit(0)) {
+      s = Edwards.r.subtract(s);
+      V = V.negate();
+    }
+
+    return new Key(s, V);
+  }
+
   /**
    * Determine if a given affine coordinate pair P = (x, y)
    * defines a point on the curve.
@@ -23,11 +44,11 @@ public class Edwards {
    * @return whether P is really a point on the curve
    */
   public boolean isPoint(BigInteger x, BigInteger y) {
-    BigInteger x2 = x.multiply(x).mod(p);
-    BigInteger y2 = y.multiply(y).mod(p);
-    BigInteger x2y2 = x2.multiply(y2).mod(p);
-    BigInteger sumx2y2 = x2.add(y2).mod(p);
-    BigInteger curveEq = BigInteger.ONE.add(d.multiply(x2y2)).mod(p);
+    final BigInteger x2 = x.multiply(x).mod(p);
+    final BigInteger y2 = y.multiply(y).mod(p);
+    final BigInteger x2y2 = x2.multiply(y2).mod(p);
+    final BigInteger sumx2y2 = x2.add(y2).mod(p);
+    final BigInteger curveEq = BigInteger.ONE.add(d.multiply(x2y2)).mod(p);
 
     return sumx2y2.equals(curveEq);
   }
