@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.math.BigInteger;
+import java.security.SecureRandom;
 
 public class Main {
   public static void main(String[] args) throws IOException {
@@ -177,12 +178,38 @@ public class Main {
     }
   }
 
-  static final String EC_SIGN_USAGE = "usage: sha3shake ec-sign <KEY_FILE> <FILE>\n";
-  static void ec_sign(String[] args) {
+  static final String EC_SIGN_USAGE = "usage: sha3shake ec-sign <PASSWORD> <FILE>\n";
+  static void ec_sign(String[] args) throws IOException {
     if (args.length != 3) {
       System.err.printf(EC_SIGN_USAGE);
       System.exit(1);
     }
+
+    final String password = args[1];
+    final String file_name = args[2];
+
+    final File file = new File(file_name);
+    final byte[] message = Files.readAllBytes(file.toPath());
+    final Edwards.Key key = Edwards.getKey(password.getBytes());
+    final BigInteger s = key.s();
+
+    SecureRandom secRand = new SecureRandom();
+    byte[] randBytes = new byte[48];
+    secRand.nextBytes(randBytes);
+    BigInteger k = new BigInteger(randBytes).mod(Edwards.r);
+
+    Edwards.Point U = Edwards.G.mul(k);
+    final byte[] Uy = U.y.toByteArray();
+
+    SHA3SHAKE sha256 = new SHA3SHAKE();
+    sha256.init(256);
+    sha256.absorb(Uy);
+    sha256.absorb(message);
+    byte[] digest = sha256.digest();
+    BigInteger h = new BigInteger(digest).mod(Edwards.r);
+    BigInteger z = k.subtract(h.multiply(s)).mod(Edwards.r);
+
+    System.out.print(h + "," + z);        
   }
 
   static final String EC_VERIFY_USAGE = "usage: sha3shake ec-verify <KEY_FILE> <FILE>\n";
