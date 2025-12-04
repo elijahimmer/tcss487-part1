@@ -2,8 +2,11 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.math.BigInteger;
+import java.security.SecureRandom;
 
 public class Main {
   public static void main(String[] args) throws IOException {
@@ -49,14 +52,9 @@ public class Main {
     final File file = new File(file_name);
     final byte[] contents = Files.readAllBytes(file.toPath());
 
-    final int suffix = sec;
-    final byte[] out = new byte[suffix >> 3];
+    final byte[] out = new byte[sec >> 3];
 
-    final SHA3SHAKE sha = new SHA3SHAKE();
-    sha.init(suffix);
-
-    sha.absorb(contents);
-    sha.digest(out);
+    SHA3SHAKE.SHA3(sec, contents, out);
 
     for (byte b : out) {
       System.out.printf("%02x", b);
@@ -72,7 +70,7 @@ public class Main {
     }
 
     final int sec = Integer.parseInt(args[1]);
-    final String seed = args[2];
+    final byte[] seed = args[2].getBytes();
     final int len = Integer.parseInt(args[3]);
     final byte[] out = new byte[len];
 
@@ -81,11 +79,7 @@ public class Main {
       System.exit(1);
     }
 
-    final SHA3SHAKE sha = new SHA3SHAKE();
-    sha.init(sec, true);
-
-    sha.absorb(seed.getBytes());
-    sha.squeeze(out, len);
+    SHA3SHAKE.SHAKE(sec, seed, out.length, out);
 
     for (byte b : out) {
       System.out.printf("%02x", b);
@@ -113,11 +107,7 @@ public class Main {
 
     final byte[] out = new byte[contents.length];
 
-    final SHA3SHAKE sha = new SHA3SHAKE();
-    sha.init(sec, true);
-
-    sha.absorb(key.getBytes());
-    sha.squeeze(out, out.length);
+    SHA3SHAKE.SHAKE(sec,key.getBytes(), contents.length, out);
 
     for (int i = 0; i < out.length; i++) {
       contents[i] ^= out[i];
@@ -126,26 +116,71 @@ public class Main {
     System.out.write(contents);
   }
 
-  static final String EC_KEYGEN_USAGE = "usage: sha3shake ec-keygen <KEY_FILE>\n";
+  static final String EC_KEYGEN_USAGE = "usage: sha3shake ec-keygen <PASSWORD> <KEY_FILE>\n";
   static void ec_keygen(String[] args) throws IOException {
-    if (args.length != 2) {
+    if (args.length != 3) {
       System.err.printf(EC_KEYGEN_USAGE);
       System.exit(1);
     }
 
-    final String private_file_name = args[1];
-    final String public_file_name = args[1] + ".pub";
+    final String password = args[1];
+    final String private_file_name = args[2];
+    final String public_file_name = args[2] + ".pub";
 
-    final FileWriter private_file = new FileWriter(private_file_name);
-    final FileWriter public_file = new FileWriter(public_file_name);
+    final var private_file = new PrintWriter(private_file_name);
+    final var public_file = new PrintWriter(public_file_name);
+
+    final int rbytes = (Edwards.r.bitLength() + 7) >> 3;
+    final var k = new BigInteger(new SecureRandom().generateSeed(rbytes << 1)).mod(Edwards.r);
+
+    final byte[] out = new byte[48];
+
+    SHA3SHAKE.SHAKE(128, password.getBytes(), out.length, out);
+
+    BigInteger s = (new BigInteger(out)).mod(Edwards.r);
+    Edwards.Point V = Edwards.G.mul(s);
+
+    if (V.x.testBit(0)) {
+      s = Edwards.r.subtract(s);
+      V = V.negate();
+    }
+
+    {
+      final byte[] bytes = s.toByteArray();
+      for (int i = 0; i < bytes.length; i++) {
+        private_file.printf("%02x", bytes[i]);
+      }
+      private_file.println();
+      private_file.flush();
+    }
+
+    {
+      byte[] bytes = V.x.toByteArray();
+      for (int i = 0; i < bytes.length; i++) {
+        public_file.printf("%02x", bytes[i]);
+      }
+      public_file.println();
+
+      bytes = V.y.toByteArray();
+      for (int i = 0; i < bytes.length; i++) {
+        public_file.printf("%02x", bytes[i]);
+      }
+      public_file.println();
+      public_file.flush();
+    }
   }
 
   static final String EC_ENCRYPT_USAGE = "usage: sha3shake ec-encrypt <KEY_FILE> <FILE>\n";
-  static void ec_encrypt(String[] args) {
+  static void ec_encrypt(String[] args) throws IOException {
     if (args.length != 3) {
       System.err.printf(EC_ENCRYPT_USAGE);
       System.exit(1);
     }
+
+    final File public_key_file = new File(args[1] + ".pub");
+    final byte[] public_key = Files.readAllBytes(public_key_file.toPath());
+
+    final var output_file = new FileWriter(args[2] + ".bin");
   }
 
   static final String EC_DECRYPT_USAGE = "usage: sha3shake ec-decrypt <KEY_FILE> <FILE>\n";

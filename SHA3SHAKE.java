@@ -219,7 +219,7 @@ public class SHA3SHAKE {
     assert out.length >= length_bytes;
 
     final SHA3SHAKE sha = new SHA3SHAKE();
-    sha.init(suffix);
+    sha.init(suffix, true);
 
     sha.absorb(X);
     sha.squeeze(out, length_bytes);
