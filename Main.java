@@ -219,20 +219,20 @@ public class Main {
       System.err.printf(EC_VERIFY_USAGE);
       System.exit(1);
     }
-    final String pub_key_file = args[1]; 
+    final String pub_key_file = args[1];
     final String sig_file = args[2];
     final String message_file = args[3];
 
     final File file = new File(message_file);
     final byte[] message = Files.readAllBytes(file.toPath());
-    
+
     Scanner scanner = new Scanner(new File(pub_key_file));
     BigInteger x = new BigInteger(scanner.nextLine());
     BigInteger y = new BigInteger(scanner.nexLline());
 
-    Edwards.Point V = new Edwards.Point(x, y); // TODO: change this so it uses getPoint 
+    Edwards.Point V = new Edwards.Point(x, y);
     scanner.close();
-    
+
     Scanner scanTwo = new Scanner(new File(sig_file));
     BigInteger h = new BigInteger(scanTwo.nextline());
     BigInteger z = new BigInteger(scanTwo.nextline());
@@ -240,20 +240,20 @@ public class Main {
     Edwards.Point Ui = ((Edwards.G.mul(z)).add(V.mul(h)));
 
     final byte[] Uiy = Ui.y.toByteArray();
-    
+
     SHA3SHAKE sha256 = new SHA3SHAKE();
     sha256.init(256);
     sha256.absorb(Uiy);
     sha256.absorb(message);
     byte[] digest = sha256.digest();
     BigInteger hi = new BigInteger(digest).mod(Edwards.r);
-    
+
     if (hi.equals(h)) {
       System.out.println("VERIFIED");
     } else {
       System.out.println("Uverified");
     }
-    
+
   }
 
   static final String USAGE =
