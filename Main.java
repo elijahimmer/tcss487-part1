@@ -7,7 +7,7 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.math.BigInteger;
 import java.security.SecureRandom;
-
+import java.util.Scanner;
 public class Main {
   public static void main(String[] args) throws IOException {
     if (args.length == 0) {
@@ -209,15 +209,51 @@ public class Main {
     BigInteger h = new BigInteger(digest).mod(Edwards.r);
     BigInteger z = k.subtract(h.multiply(s)).mod(Edwards.r);
 
-    System.out.print(h + "," + z);
+    System.out.println(h);
+    System.out.println(z);
   }
 
   static final String EC_VERIFY_USAGE = "usage: sha3shake ec-verify <PUB_KEY_FILE> <SIGNATURE_FILE> <FILE>\n";
-  static void ec_verify(String[] args) {
+  static void ec_verify(String[] args) throws IOException {
     if (args.length != 4) {
       System.err.printf(EC_VERIFY_USAGE);
       System.exit(1);
     }
+    final String pub_key_file = args[1]; 
+    final String sig_file = args[2];
+    final String message_file = args[3];
+
+    final File file = new File(message_file);
+    final byte[] message = Files.readAllBytes(file.toPath());
+    
+    Scanner scanner = new Scanner(new File(pub_key_file));
+    BigInteger x = new BigInteger(scanner.nextLine());
+    BigInteger y = new BigInteger(scanner.nexLline());
+
+    Edwards.Point V = new Edwards.Point(x, y); // TODO: change this so it uses getPoint 
+    scanner.close();
+    
+    Scanner scanTwo = new Scanner(new File(sig_file));
+    BigInteger h = new BigInteger(scanTwo.nextline());
+    BigInteger z = new BigInteger(scanTwo.nextline());
+    scanTwo.close();
+    Edwards.Point Ui = ((Edwards.G.mul(z)).add(V.mul(h)));
+
+    final byte[] Uiy = Ui.y.toByteArray();
+    
+    SHA3SHAKE sha256 = new SHA3SHAKE();
+    sha256.init(256);
+    sha256.absorb(Uiy);
+    sha256.absorb(message);
+    byte[] digest = sha256.digest();
+    BigInteger hi = new BigInteger(digest).mod(Edwards.r);
+    
+    if (hi.equals(h)) {
+      System.out.println("VERIFIED");
+    } else {
+      System.out.println("Uverified");
+    }
+    
   }
 
   static final String USAGE =
