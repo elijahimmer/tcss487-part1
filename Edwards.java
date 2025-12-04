@@ -18,13 +18,10 @@ public class Edwards {
   public static record Key(BigInteger s, Point V) {}
 
   public static Key getKey(byte[] password) {
-    final int rbytes = (Edwards.r.bitLength() + 7) >> 3;
-    final var k = new BigInteger(new SecureRandom().generateSeed(rbytes << 1)).mod(Edwards.r);
-
     final byte[] out = new byte[48];
     SHA3SHAKE.SHAKE(128, password, out.length, out);
 
-    BigInteger s = k.xor(new BigInteger(out)).mod(Edwards.r);
+    BigInteger s = (new BigInteger(out)).mod(Edwards.r);
     Point V = Edwards.G.mul(s);
 
     if (V.x.testBit(0)) {
