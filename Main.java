@@ -226,14 +226,10 @@ public class Main {
 
     final File file = new File(message_file);
     final byte[] message = Files.readAllBytes(file.toPath());
-    
+
     Scanner scanner = new Scanner(new File(pub_key_file));
     BigInteger x = new BigInteger(scanner.nextLine(), 16);
     BigInteger y = new BigInteger(scanner.nextLine(), 16);
-
-    final Scanner scanner = new Scanner(new File(pub_key_file));
-    final BigInteger x = new BigInteger(scanner.nextLine());
-    final BigInteger y = new BigInteger(scanner.nextLine());
 
     final Edwards.Point V = new Edwards.Point(x, y);
     scanner.close();
