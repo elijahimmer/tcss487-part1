@@ -110,8 +110,9 @@ public class SHA3SHAKE {
   * @param len desired number of squeezed bytes
   * @return the val buffer containing the desired hash value
   */
-  public byte[] squeeze(final byte[] out, final int len) {
-    assert out.length >= len;
+  public byte[] squeeze(final byte[] out, final int offset, final int len) {
+    assert out.length >= offset;
+    assert out.length - offset >= len;
     final int block_len = this.digest_length;
     final int rsize = 200 - 2 * this.digest_length;
 
@@ -156,6 +157,18 @@ public class SHA3SHAKE {
   * @param len desired number of squeezed bytes
   * @return newly allocated buffer containing the desired hash value
   */
+  public byte[] squeeze(final byte[] out, final int len) {
+    squeeze(out, 0, len);
+    return out;
+  }
+
+  /**
+  * Squeeze a chunk of hashed bytes from the sponge.
+  * Call this method as many times as needed to extract the total desired number of bytes.
+  *
+  * @param len desired number of squeezed bytes
+  * @return newly allocated buffer containing the desired hash value
+  */
   public byte[] squeeze(int len) {
     final byte[] out = new byte[len];
     squeeze(out, len);
@@ -165,15 +178,24 @@ public class SHA3SHAKE {
   /**
   * Squeeze a whole SHA-3 digest of hashed bytes from the sponge.
   *
-  * NOTE(Elijah): Not sure what this is
+  * @param out hash value buffer
+  * @return the val buffer containing the desired hash value
+  */
+  public byte[] digest(byte[] out, int offset) {
+    assert out.length == this.digest_length;
+    squeeze(out, this.digest_length, offset);
+    return out;
+  }
+
+  /**
+  * Squeeze a whole SHA-3 digest of hashed bytes from the sponge.
   *
   * @param out hash value buffer
   * @return the val buffer containing the desired hash value
   */
   public byte[] digest(byte[] out) {
-    assert out.length == this.digest_length;
-    squeeze(out, this.digest_length);
-    return out;
+    assert out.length >= this.digest_length;
+    return digest(out, 0);
   }
 
   /**
@@ -183,7 +205,27 @@ public class SHA3SHAKE {
   */
   public byte[] digest() {
     final byte[] out = new byte[this.digest_length];
-    return digest(out);
+    return digest(out, 0);
+  }
+
+  /**
+  * Compute the streamlined SHA-3-<224,256,384,512> on input X.
+  *
+  * @param suffix desired output length in bits (one of 224, 256, 384, 512)
+  * @param X data to be hashed
+  * @param out hash value buffer (if null, this method allocates it with the required size)
+  * @param out_offset the byte ofset into the `out` buffer to start at
+  * @return the out buffer containing the desired hash value.
+  */
+  public static byte[] SHA3(int suffix, byte[] X, byte[] out, int out_offset) {
+    assert out.length - out_offset > suffix >>> 3;
+
+    final SHA3SHAKE sha = new SHA3SHAKE();
+    sha.init(suffix);
+
+    sha.absorb(X);
+    sha.digest(out, out_offset);
+    return out;
   }
 
   /**
@@ -195,14 +237,7 @@ public class SHA3SHAKE {
   * @return the out buffer containing the desired hash value.
   */
   public static byte[] SHA3(int suffix, byte[] X, byte[] out) {
-    assert out.length == suffix >>> 3;
-
-    final SHA3SHAKE sha = new SHA3SHAKE();
-    sha.init(suffix);
-
-    sha.absorb(X);
-    sha.digest(out);
-    return out;
+    SHA3(suffix, X, out, 0);
   }
 
   /**

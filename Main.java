@@ -53,7 +53,7 @@ public class Main {
 
     final byte[] out = new byte[sec >> 3];
 
-    SHA3SHAKE.SHA3(sec, contents, out);
+    SHA3SHAKE.SHA3(sec, contents, out, 0);
 
     for (byte b : out) {
       System.out.printf("%02x", b);
