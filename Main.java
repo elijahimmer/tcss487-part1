@@ -158,17 +158,18 @@ public class Main {
       public_file.flush();
     }
   }
-// TODO: Grant
+
   static final String EC_ENCRYPT_USAGE = "usage: sha3shake ec-encrypt <KEY_FILE> <FILE>\n";
   static void ec_encrypt(String[] args) throws IOException {
     if (args.length != 3) {
       System.err.printf(EC_ENCRYPT_USAGE);
       System.exit(1);
     }
-
+    // Base name, and message file.
     final String key_base = args[1];
     final String msg_file_name = args[2];
 
+    // Read public key file.
     final File public_key_file = new File(args[1] + ".pub");
     final byte[] public_key = Files.readAllBytes(public_key_file.toPath());
     final String public_key_string = new String(public_key);
@@ -192,6 +193,7 @@ public class Main {
     final File msg_file = new File(msg_file_name);
     final byte[] m = Files.readAllBytes(msg_file.toPath());
 
+    // Random 384-bit k
     final byte[] k_bytes = new byte[48]; // 384 bits.
     new SecureRandom().nextBytes(k_bytes);
     BigInteger k = new BigInteger(1, k_bytes).mod(Edwards.r);
@@ -200,16 +202,16 @@ public class Main {
     final Edwards.Point W = V.mul(k);
     final Edwards.Point Z = Edwards.G.mul(k);
 
-    // Convert contents to byte array.
+    // SHAKE convert contents to byte array.
     final byte[] Wy = W.y.toByteArray();
-    final byte[] kk = new byte[64];
-    SHA3SHAKE.SHAKE(256, Wy, kk.length << 3, kk);
+    final byte[] shake_output = new byte[64];
+    SHA3SHAKE.SHAKE(256, Wy, shake_output.length << 3, shake_output);
 
     final byte[] ka = new byte[32];
     final byte[] ke = new byte[32];
     for (int i = 0; i < 32; i++) {
-        ka[i] = kk[i];
-        ke[i] = kk[32 + i];
+        ka[i] = shake_output[i];
+        ke[i] = shake_output[32 + i];
     }
 
     // SHAKE on ke, m bytes, XOR with m to get c.
@@ -229,6 +231,7 @@ public class Main {
     final byte[] t = new byte[32];
     SHA3SHAKE.SHA3(256, mac_input, t);
 
+    // (Z,c,t) to FILE.bin as hex
     try (FileWriter fw = new FileWriter(msg_file_name + ".bin");
          PrintWriter out = new PrintWriter(fw)) {
 
@@ -248,11 +251,107 @@ public class Main {
   }
 
   static final String EC_DECRYPT_USAGE = "usage: sha3shake ec-decrypt <KEY_FILE> <FILE>\n";
-  static void ec_decrypt(String[] args) {
+  static void ec_decrypt(String[] args) throws IOException {
     if (args.length != 3) {
       System.err.printf(EC_DECRYPT_USAGE);
       System.exit(1);
     }
+      // Private key file, ciphertext file.
+      final String key_file_name = args[1];
+      final String cipher_file_name = args[2];
+
+      // Reads private scalar s from key file.
+      final File private_file = new File(key_file_name);
+      final byte[] private_byte = Files.readAllBytes(private_file.toPath());
+      final String private_string = new String(private_byte);
+      final String[] private_lines = private_string.split("\\R");
+      if (private_lines.length < 1) {
+          System.err.println("Invalid private key.");
+          System.exit(1);
+      }
+      BigInteger s = new BigInteger(private_lines[0], 16).mod(Edwards.r);
+
+      // Reads ciphertext
+      final File cipher_file = new File(cipher_file_name);
+      final byte[] cipher_bytes = Files.readAllBytes(cipher_file.toPath());
+      final String cipher_string = new String(cipher_bytes);
+      final String[] lines = cipher_string.split("\\R");
+      if (lines.length < 4) {
+          System.err.println("Invalid ciphertext.");
+          System.exit(1);
+      }
+      // Zx Zy
+      final BigInteger Zx = new BigInteger(lines[0], 16);
+      final BigInteger Zy = new BigInteger(lines[1], 16);
+
+      //t to byte[]
+      final String t_hex = lines[2];
+      final int t_len = t_hex.length() / 2;
+      final byte[] t = new byte[t_len];
+      for (int i = 0; i < t_len; i++) {
+          int high = Character.digit(t_hex.charAt(2 * i), 16);
+          int low = Character.digit(t_hex.charAt(2 * i + 1), 16);
+          t[i] = (byte) ((high << 4) | low);
+      }
+
+      //c to byte[]
+      final String c_hex = lines[3];
+      final int c_len = c_hex.length() / 2;
+      final byte[] c = new byte[c_len];
+      for (int i = 0; i < c_len; i++) {
+          int high = Character.digit(c_hex.charAt(2 * i), 16);
+          int low = Character.digit(c_hex.charAt(2 * i + 1), 16);
+          c[i] = (byte) ((high << 4) | low);
+      }
+      // Z from Zy and LSB of Zx
+      final Edwards curve = new Edwards();
+      final boolean Z_x_lsb = Zx.testBit(0);
+      final Edwards.Point Z = curve.getPoint(Zy, Z_x_lsb);
+
+      // W = sZ
+      final Edwards.Point W = Z.mul(s);
+
+      //SHAKE256 on y-coord of W to ka || ke
+      final byte[] Wy = W.y.toByteArray();
+      final byte[] shake_output = new byte[64]; // 512 bits
+      SHA3SHAKE.SHAKE(256, Wy, shake_output.length << 3, shake_output);
+
+      final byte[] ka = new byte[32];
+      final byte[] ke = new byte[32];
+      for (int i = 0; i < 32; i++) {
+          ka[i] = shake_output[i];
+          ke[i] = shake_output[32 + i];
+      }
+      // t' ka || c
+      final byte[] mac_input = new byte[ka.length + c.length];
+      System.arraycopy(ka, 0, mac_input, 0, ka.length);
+      System.arraycopy(c, 0, mac_input, ka.length, c.length);
+
+      final byte[] tprime = new byte[32];
+      SHA3SHAKE.SHA3(256, mac_input, tprime);
+
+      // t = t' ?
+      boolean work = (tprime.length == t.length);
+      for (int i = 0; work && i < t.length; i++) {
+          if (tprime[i] != t[i]) {
+              work = false;
+          }
+      }
+      if (!work) {
+          System.err.println("Decryption error, authentication mismatch.");
+          System.exit(1);
+      }
+
+      // SHAKE on ke to c bytes, XOR with c to get m
+      final byte[] ke_stream = new byte[c.length];
+      SHA3SHAKE.SHAKE(128, ke, ke_stream.length << 3, ke_stream);
+
+      final byte[] m = new byte[c.length];
+      for (int i = 0; i < c.length; i++) {
+          m[i] = (byte) (c[i] ^ ke_stream[i]);
+      }
+
+      System.out.write(m);
   }
 
   static final String EC_SIGN_USAGE = "usage: sha3shake ec-sign <PASSWORD> <FILE>\n";
