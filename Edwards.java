@@ -126,8 +126,9 @@ public class Edwards {
       this.x = x; this.y = y;
     }
 
-    public static Point fromY(final BigInteger y) {
+    public static Point fromY(BigInteger y) {
       assert !y.equals(BigInteger.valueOf(-1));
+      y = y.mod(p);
       final BigInteger a1 = y.modPow(BigInteger.TWO, p).negate().add(BigInteger.ONE).mod(p);
       final BigInteger a2 = y.modPow(BigInteger.TWO, p).multiply(d).negate().add(BigInteger.ONE).mod(p);
       final BigInteger x = a1.modPow(a2.modInverse(p), p).sqrt().mod(p);
@@ -176,8 +177,8 @@ public class Edwards {
       final BigInteger x2 = P.x;
       final BigInteger y2 = P.y;
 
-      final BigInteger num1 = (x1.multiply(y2)).add(y1.multiply(x2));
-      final BigInteger num2 = (y1.multiply(y2)).subtract(x1.multiply(x2));
+      final BigInteger num1 = (x1.multiply(y2)).add(y1.multiply(x2)).mod(p);
+      final BigInteger num2 = (y1.multiply(y2)).subtract(x1.multiply(x2)).mod(p);
 
       final BigInteger denom1 = BigInteger.ONE.add(d.multiply(x1.multiply(x2.multiply(y1.multiply(y2)))));
       final BigInteger denom2 = BigInteger.ONE.subtract(d.multiply(x1.multiply(x2.multiply(y1.multiply(y2)))));
@@ -207,6 +208,7 @@ public class Edwards {
           V = V.add(P);
         }
       }
+
       return V;
     }
 

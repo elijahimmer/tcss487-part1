@@ -423,6 +423,11 @@ public class Main {
     final byte[] message = Files.readAllBytes(new File(message_file).toPath());
 
     { // test maths
+      assert Edwards.G.mul(BigInteger.ZERO).equals(new Edwards.Point());
+      assert Edwards.G.mul(BigInteger.ONE).equals(Edwards.G);
+      System.err.printf("lhs: %s\nrhs: %s\n", Edwards.G.add(Edwards.G.negate()), new Edwards.Point());
+      assert Edwards.G.add(Edwards.G.negate()).equals(new Edwards.Point());
+
       final SecureRandom secRand = new SecureRandom();
       final byte[] randBytes = new byte[48];
 
@@ -439,11 +444,6 @@ public class Main {
       assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l));
       assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l.mod(Edwards.r)));
       assert Edwards.G.mul(k).add(Edwards.G.mul(l).add(Edwards.G.mul(m))).equals(Edwards.G.mul(m).add(Edwards.G.mul(l).add(Edwards.G.mul(k))));
-
-      assert Edwards.G.mul(BigInteger.ZERO).equals(new Edwards.Point());
-      assert Edwards.G.mul(BigInteger.ONE).equals(Edwards.G);
-      assert Edwards.G.mul(BigInteger.ONE).equals(new Edwards.Point());
-      assert false;
     }
 
     final Edwards.Point V;
