@@ -134,7 +134,6 @@ public class Main {
 
     final Edwards.Key key = Edwards.getKey(password.getBytes());
     final BigInteger s = key.s();
-    System.out.println("Private key s: " + s);
     {
       final byte[] bytes = key.s().toByteArray();
       for (int i = 0; i < bytes.length; i++) {
@@ -175,7 +174,6 @@ public class Main {
     final byte[] public_key = Files.readAllBytes(public_key_file.toPath());
     final String public_key_string = new String(public_key);
 
-    final var output_file = new FileWriter(args[2] + ".bin");
     // First line x, second line y.
     final String[] lines = public_key_string.split("\\R");
     if (lines.length < 2) {
@@ -270,7 +268,7 @@ public class Main {
           System.err.println("Invalid private key.");
           System.exit(1);
       }
-      BigInteger s = new BigInteger(private_lines[0], 16).mod(Edwards.r);
+      BigInteger s = new BigInteger(private_lines[0], 32).mod(Edwards.r);
 
       // Reads ciphertext
       final File cipher_file = new File(cipher_file_name);
@@ -369,7 +367,6 @@ public class Main {
     final byte[] message = Files.readAllBytes(file.toPath());
     final Edwards.Key key = Edwards.getKey(password.getBytes());
     final BigInteger s = key.s();
-    System.out.println("Private key s: " + s);
 
     final SecureRandom secRand = new SecureRandom();
     final byte[] randBytes = new byte[48];
