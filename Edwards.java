@@ -161,8 +161,7 @@ public class Edwards {
      * @return -P
      */
     public Point negate() {
-        BigInteger negateX = x.negate().mod(p);
-      return new Point(negateX, y);
+      return new Point(x.negate().mod(p), y);
     }
 
     /**
@@ -172,18 +171,18 @@ public class Edwards {
      * @return this + P
      */
     public Point add(Point P) {
-      BigInteger x1 = this.x;
-      BigInteger y1 = this.y;
-      BigInteger x2 = P.x;
-      BigInteger y2 = P.y;
+      final BigInteger x1 = this.x;
+      final BigInteger y1 = this.y;
+      final BigInteger x2 = P.x;
+      final BigInteger y2 = P.y;
 
-      BigInteger num1 = (x1.multiply(y2)).add(y1.multiply(x2));
-      BigInteger num2 = (y1.multiply(y2)).subtract(x1.multiply(x2));
+      final BigInteger num1 = (x1.multiply(y2)).add(y1.multiply(x2));
+      final BigInteger num2 = (y1.multiply(y2)).subtract(x1.multiply(x2));
 
-      BigInteger denom1 = BigInteger.ONE.add(d.multiply(x1.multiply(x2.multiply(y1.multiply(y2)))));
-      BigInteger denom2 = BigInteger.ONE.subtract(d.multiply(x1.multiply(x2.multiply(y1.multiply(y2)))));
-      BigInteger x3 = num1.multiply(denom1.modInverse(p)).mod(p);
-      BigInteger y3 = num2.multiply(denom2.modInverse(p)).mod(p);
+      final BigInteger denom1 = BigInteger.ONE.add(d.multiply(x1.multiply(x2.multiply(y1.multiply(y2)))));
+      final BigInteger denom2 = BigInteger.ONE.subtract(d.multiply(x1.multiply(x2.multiply(y1.multiply(y2)))));
+      final BigInteger x3 = num1.multiply(denom1.modInverse(p)).mod(p);
+      final BigInteger y3 = num2.multiply(denom2.modInverse(p)).mod(p);
 
       return new Point(x3, y3);
     }

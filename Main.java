@@ -1,4 +1,3 @@
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.FileOutputStream;
@@ -372,18 +371,40 @@ public class Main {
     final byte[] randBytes = new byte[48];
     secRand.nextBytes(randBytes);
 
-    final BigInteger k = new BigInteger(randBytes).mod(Edwards.r);
-    Edwards.Point U = Edwards.G.mul(k);
-    final byte[] Uy = U.y.toByteArray();
+    final BigInteger kRaw = new BigInteger(randBytes);
+    final BigInteger k = kRaw.mod(Edwards.r);
 
-    final SHA3SHAKE sha256 = new SHA3SHAKE();
-    sha256.init(256);
-    sha256.absorb(Uy);
-    sha256.absorb(message);
-    final byte[] digest = sha256.digest();
+    { // test maths
+      secRand.nextBytes(randBytes);
+      final BigInteger l = new BigInteger(randBytes);
+      secRand.nextBytes(randBytes);
+      final BigInteger m = new BigInteger(randBytes);
 
-    final BigInteger h = new BigInteger(digest).mod(Edwards.r);
-    final BigInteger z = k.subtract(h.multiply(s)).mod(Edwards.r);
+      assert Edwards.G.mul(kRaw).equals(Edwards.G.mul(k));
+      assert Edwards.G.mul(k.add(BigInteger.ONE)).equals(Edwards.G.add(Edwards.G.mul(k)));
+      assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l));
+      assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l.mod(Edwards.r)));
+      assert Edwards.G.mul(k).add(Edwards.G.mul(l).add(Edwards.G.mul(m))).equals(Edwards.G.mul(m).add(Edwards.G.mul(l).add(Edwards.G.mul(k))));
+
+      // assert Edwards.G.mul(BigInteger.ZERO) == new Edwards.Point();
+      // assert Edwards.G.mul(1).d
+      System.err.println("ran");
+    }
+
+    final Edwards.Point U = Edwards.G.mul(k);
+
+    final BigInteger h;
+    {
+      final SHA3SHAKE sha256 = new SHA3SHAKE();
+      sha256.init(256, false);
+      sha256.absorb(U.y.toByteArray());
+      sha256.absorb(message);
+      final byte[] digest = sha256.digest();
+      assert digest.length == 32;
+      h = new BigInteger(digest).mod(Edwards.r);
+    }
+
+    final BigInteger z = k.subtract(h.multiply(s).mod(Edwards.r)).mod(Edwards.r);
 
     System.out.println(h);
     System.out.println(z);
@@ -399,36 +420,69 @@ public class Main {
     final String sig_file = args[2];
     final String message_file = args[3];
 
-    final File file = new File(message_file);
-    final byte[] message = Files.readAllBytes(file.toPath());
+    final byte[] message = Files.readAllBytes(new File(message_file).toPath());
 
-    Scanner scanner = new Scanner(new File(pub_key_file));
-    BigInteger x = new BigInteger(scanner.nextLine(), 16);
-    BigInteger y = new BigInteger(scanner.nextLine(), 16);
+    { // test maths
+      final SecureRandom secRand = new SecureRandom();
+      final byte[] randBytes = new byte[48];
 
-    final Edwards.Point V = new Edwards.Point(x, y);
-    scanner.close();
+      secRand.nextBytes(randBytes);
+      final BigInteger k = new BigInteger(randBytes);
+      secRand.nextBytes(randBytes);
+      final BigInteger l = new BigInteger(randBytes);
+      secRand.nextBytes(randBytes);
+      final BigInteger m = new BigInteger(randBytes);
 
-    final Scanner scanTwo = new Scanner(new File(sig_file));
-    final BigInteger h = new BigInteger(scanTwo.nextLine());
-    final BigInteger z = new BigInteger(scanTwo.nextLine());
-    scanTwo.close();
-    final Edwards.Point Ui = (Edwards.G.mul(z)).add(V.mul(h));
+      assert Edwards.G.mul(k).equals(Edwards.G.mul(k.mod(Edwards.r)));
+      assert Edwards.G.mul(k.add(BigInteger.ONE).mod(Edwards.r)).equals(Edwards.G.add(Edwards.G.mul(k)));
+      System.err.printf("lhs: %s\nrhs: %s\n", Edwards.G.mul(l).mul(k), Edwards.G.mul(k).mul(l));
+      assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l));
+      assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l.mod(Edwards.r)));
+      assert Edwards.G.mul(k).add(Edwards.G.mul(l).add(Edwards.G.mul(m))).equals(Edwards.G.mul(m).add(Edwards.G.mul(l).add(Edwards.G.mul(k))));
 
-    final byte[] Uiy = Ui.y.toByteArray();
+      assert Edwards.G.mul(BigInteger.ZERO).equals(new Edwards.Point());
+      assert Edwards.G.mul(BigInteger.ONE).equals(Edwards.G);
+      assert Edwards.G.mul(BigInteger.ONE).equals(new Edwards.Point());
+      assert false;
+    }
 
-    final SHA3SHAKE sha256 = new SHA3SHAKE();
-    sha256.init(256);
-    sha256.absorb(Uiy);
-    sha256.absorb(message);
-    final byte[] digest = sha256.digest();
-    final BigInteger hi = new BigInteger(digest).mod(Edwards.r);
-    // System.out.println(h);
-    // System.out.println(hi);
+    final Edwards.Point V;
+    {
+      final Scanner scanner = new Scanner(new File(pub_key_file));
+      final BigInteger x = new BigInteger(scanner.next(), 16);
+      final BigInteger y = new BigInteger(scanner.next(), 16);
 
-    if (hi.equals(h)) {
+      V = new Edwards.Point(x, y);
+
+      scanner.close();
+    }
+
+    final Edwards.Point UPrime;
+    final BigInteger h;
+    {
+      final Scanner scanTwo = new Scanner(new File(sig_file));
+      h = new BigInteger(scanTwo.next());
+      final BigInteger z = new BigInteger(scanTwo.next());
+      scanTwo.close();
+      UPrime = Edwards.G.mul(z).add(V.mul(h));
+    }
+
+    final BigInteger hPrime;
+    {
+      final SHA3SHAKE sha256 = new SHA3SHAKE();
+      sha256.init(256, false);
+      sha256.absorb(UPrime.y.toByteArray());
+      sha256.absorb(message);
+      final byte[] digest = sha256.digest();
+
+      hPrime = new BigInteger(digest).mod(Edwards.r);
+    }
+
+    if (hPrime.equals(h)) {
       System.out.println("VERIFIED");
     } else {
+      System.err.println("expected: " + h);
+      System.err.println("found:    " + hPrime);
       System.out.println("INVALID SIGNATURE!");
     }
   }
