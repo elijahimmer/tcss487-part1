@@ -371,9 +371,7 @@ public class Main {
     final byte[] randBytes = new byte[48];
     secRand.nextBytes(randBytes);
 
-    final BigInteger kRaw = new BigInteger(randBytes);
-    final BigInteger k = kRaw.mod(Edwards.r);
-
+    final BigInteger k = new BigInteger(randBytes).mod(Edwards.r);
     final Edwards.Point U = Edwards.G.mul(k);
 
     final BigInteger h;
