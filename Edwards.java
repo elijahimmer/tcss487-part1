@@ -5,9 +5,9 @@ import java.security.SecureRandom;
  * Arithmetic on Edwards elliptic curves.
  */
 public class Edwards {
-  public static final BigInteger p = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.valueOf(189));
+  public static final BigInteger p = BigInteger.valueOf(2).pow(256).subtract(BigInteger.valueOf(189));
   public static final BigInteger d = BigInteger.valueOf(15343);
-  public static final BigInteger r = BigInteger.ONE.shiftLeft(254).subtract(new BigInteger("87175310462106073678594642380840586067"));
+  public static final BigInteger r = BigInteger.valueOf(2).pow(254).subtract(new BigInteger("87175310462106073678594642380840586067"));
   public static final Point G = Point.fromY(BigInteger.valueOf(-4));
 
   /**
