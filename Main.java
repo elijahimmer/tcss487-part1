@@ -422,29 +422,30 @@ public class Main {
 
     final byte[] message = Files.readAllBytes(new File(message_file).toPath());
 
-    { // test maths
-      assert Edwards.G.mul(BigInteger.ZERO).equals(new Edwards.Point());
-      assert Edwards.G.mul(BigInteger.ONE).equals(Edwards.G);
-      System.err.printf("lhs: %s\nrhs: %s\n", Edwards.G.add(Edwards.G.negate()), new Edwards.Point());
-      assert Edwards.G.add(Edwards.G.negate()).equals(new Edwards.Point());
+    // { // test maths
+    //   System.err.println(Edwards.G);
+    //   assert Edwards.G.mul(BigInteger.ZERO).equals(new Edwards.Point());
+    //   assert Edwards.G.mul(BigInteger.ONE).equals(Edwards.G);
+    //   System.err.printf("lhs: %s\nrhs: %s\n", Edwards.G.add(Edwards.G.negate()), new Edwards.Point());
+    //   assert Edwards.G.add(Edwards.G.negate()).equals(new Edwards.Point());
 
-      final SecureRandom secRand = new SecureRandom();
-      final byte[] randBytes = new byte[48];
+    //   final SecureRandom secRand = new SecureRandom();
+    //   final byte[] randBytes = new byte[48];
 
-      secRand.nextBytes(randBytes);
-      final BigInteger k = new BigInteger(randBytes);
-      secRand.nextBytes(randBytes);
-      final BigInteger l = new BigInteger(randBytes);
-      secRand.nextBytes(randBytes);
-      final BigInteger m = new BigInteger(randBytes);
+    //   secRand.nextBytes(randBytes);
+    //   final BigInteger k = new BigInteger(randBytes);
+    //   secRand.nextBytes(randBytes);
+    //   final BigInteger l = new BigInteger(randBytes);
+    //   secRand.nextBytes(randBytes);
+    //   final BigInteger m = new BigInteger(randBytes);
 
-      assert Edwards.G.mul(k).equals(Edwards.G.mul(k.mod(Edwards.r)));
-      assert Edwards.G.mul(k.add(BigInteger.ONE).mod(Edwards.r)).equals(Edwards.G.add(Edwards.G.mul(k)));
-      System.err.printf("lhs: %s\nrhs: %s\n", Edwards.G.mul(l).mul(k), Edwards.G.mul(k).mul(l));
-      assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l));
-      assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l.mod(Edwards.r)));
-      assert Edwards.G.mul(k).add(Edwards.G.mul(l).add(Edwards.G.mul(m))).equals(Edwards.G.mul(m).add(Edwards.G.mul(l).add(Edwards.G.mul(k))));
-    }
+    //   assert Edwards.G.mul(k).equals(Edwards.G.mul(k.mod(Edwards.r)));
+    //   assert Edwards.G.mul(k.add(BigInteger.ONE).mod(Edwards.r)).equals(Edwards.G.add(Edwards.G.mul(k)));
+    //   System.err.printf("lhs: %s\nrhs: %s\n", Edwards.G.mul(l).mul(k), Edwards.G.mul(k).mul(l));
+    //   assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l));
+    //   assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l.mod(Edwards.r)));
+    //   assert Edwards.G.mul(k).add(Edwards.G.mul(l).add(Edwards.G.mul(m))).equals(Edwards.G.mul(m).add(Edwards.G.mul(l).add(Edwards.G.mul(k))));
+    // }
 
     final Edwards.Point V;
     {
@@ -481,8 +482,6 @@ public class Main {
     if (hPrime.equals(h)) {
       System.out.println("VERIFIED");
     } else {
-      System.err.println("expected: " + h);
-      System.err.println("found:    " + hPrime);
       System.out.println("INVALID SIGNATURE!");
     }
   }
