@@ -374,23 +374,6 @@ public class Main {
     final BigInteger kRaw = new BigInteger(randBytes);
     final BigInteger k = kRaw.mod(Edwards.r);
 
-    { // test maths
-      secRand.nextBytes(randBytes);
-      final BigInteger l = new BigInteger(randBytes);
-      secRand.nextBytes(randBytes);
-      final BigInteger m = new BigInteger(randBytes);
-
-      assert Edwards.G.mul(kRaw).equals(Edwards.G.mul(k));
-      assert Edwards.G.mul(k.add(BigInteger.ONE)).equals(Edwards.G.add(Edwards.G.mul(k)));
-      assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l));
-      assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l.mod(Edwards.r)));
-      assert Edwards.G.mul(k).add(Edwards.G.mul(l).add(Edwards.G.mul(m))).equals(Edwards.G.mul(m).add(Edwards.G.mul(l).add(Edwards.G.mul(k))));
-
-      // assert Edwards.G.mul(BigInteger.ZERO) == new Edwards.Point();
-      // assert Edwards.G.mul(1).d
-      System.err.println("ran");
-    }
-
     final Edwards.Point U = Edwards.G.mul(k);
 
     final BigInteger h;
@@ -421,31 +404,6 @@ public class Main {
     final String message_file = args[3];
 
     final byte[] message = Files.readAllBytes(new File(message_file).toPath());
-
-    // { // test maths
-    //   System.err.println(Edwards.G);
-    //   assert Edwards.G.mul(BigInteger.ZERO).equals(new Edwards.Point());
-    //   assert Edwards.G.mul(BigInteger.ONE).equals(Edwards.G);
-    //   System.err.printf("lhs: %s\nrhs: %s\n", Edwards.G.add(Edwards.G.negate()), new Edwards.Point());
-    //   assert Edwards.G.add(Edwards.G.negate()).equals(new Edwards.Point());
-
-    //   final SecureRandom secRand = new SecureRandom();
-    //   final byte[] randBytes = new byte[48];
-
-    //   secRand.nextBytes(randBytes);
-    //   final BigInteger k = new BigInteger(randBytes);
-    //   secRand.nextBytes(randBytes);
-    //   final BigInteger l = new BigInteger(randBytes);
-    //   secRand.nextBytes(randBytes);
-    //   final BigInteger m = new BigInteger(randBytes);
-
-    //   assert Edwards.G.mul(k).equals(Edwards.G.mul(k.mod(Edwards.r)));
-    //   assert Edwards.G.mul(k.add(BigInteger.ONE).mod(Edwards.r)).equals(Edwards.G.add(Edwards.G.mul(k)));
-    //   System.err.printf("lhs: %s\nrhs: %s\n", Edwards.G.mul(l).mul(k), Edwards.G.mul(k).mul(l));
-    //   assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l));
-    //   assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l.mod(Edwards.r)));
-    //   assert Edwards.G.mul(k).add(Edwards.G.mul(l).add(Edwards.G.mul(m))).equals(Edwards.G.mul(m).add(Edwards.G.mul(l).add(Edwards.G.mul(k))));
-    // }
 
     final Edwards.Point V;
     {
@@ -489,4 +447,29 @@ public class Main {
   static final String USAGE =
         SHA3_USAGE + SHAKE_RANDOM_USAGE + SHAKE_ENCRYPT_USAGE + EC_KEYGEN_USAGE +
         EC_ENCRYPT_USAGE + EC_DECRYPT_USAGE + EC_SIGN_USAGE + EC_VERIFY_USAGE;
+
+  // { // test maths
+  //   assert Edwards.G.mul(BigInteger.ZERO).equals(new Edwards.Point());
+  //   assert Edwards.G.mul(BigInteger.ONE).equals(Edwards.G);
+  //   assert Edwards.G.add(Edwards.G.negate()).equals(new Edwards.Point());
+  //   assert Edwards.G.mul(BigInteger.TWO).equals(Edwards.G.add(Edwards.G));
+  //   assert !Edwards.G.mul(BigInteger.valueOf(4)).equals(new Edwards.Point());
+  //   assert Edwards.G.mul(Edwards.r).equals(new Edwards.Point());
+
+  //   final SecureRandom secRand = new SecureRandom();
+  //   final byte[] randBytes = new byte[48];
+
+  //   secRand.nextBytes(randBytes);
+  //   final BigInteger k = new BigInteger(randBytes);
+  //   secRand.nextBytes(randBytes);
+  //   final BigInteger l = new BigInteger(randBytes);
+  //   secRand.nextBytes(randBytes);
+  //   final BigInteger m = new BigInteger(randBytes);
+
+  //   assert Edwards.G.mul(k).equals(Edwards.G.mul(k.mod(Edwards.r)));
+  //   assert Edwards.G.mul(k.add(BigInteger.ONE).mod(Edwards.r)).equals(Edwards.G.add(Edwards.G.mul(k)));
+  //   assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l));
+  //   assert Edwards.G.mul(l).mul(k).equals(Edwards.G.mul(k).mul(l.mod(Edwards.r)));
+  //   assert Edwards.G.mul(k).add(Edwards.G.mul(l).add(Edwards.G.mul(m))).equals(Edwards.G.mul(m).add(Edwards.G.mul(l).add(Edwards.G.mul(k))));
+  // }
 }
