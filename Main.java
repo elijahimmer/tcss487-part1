@@ -423,15 +423,14 @@ public class Main {
     sha256.absorb(message);
     final byte[] digest = sha256.digest();
     final BigInteger hi = new BigInteger(digest).mod(Edwards.r);
-    System.out.println(h);
-    System.out.println(hi);
+    // System.out.println(h);
+    // System.out.println(hi);
 
     if (hi.equals(h)) {
       System.out.println("VERIFIED");
     } else {
-      System.out.println("Unverified");
+      System.out.println("INVALID SIGNATURE!");
     }
-
   }
 
   static final String USAGE =

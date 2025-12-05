@@ -21,8 +21,10 @@ c-run *ARGS:
     ./{{C_EXEC}} {{ARGS}}
 
 test: java-compile c-compile
-    @just test-sha
-    @just test-shake-encrypt
+    @just test-sha 256 README.md
+    @just test-shake-encrypt 256 {{PASSWORD}} README.md
+    @just test-ec-encrypt
+    @just test-ec-sign
 
 test-sha SEC FILE:
     ./{{C_EXEC}} sha {{SEC}} {{FILE}} > {{FILE}}.sha
@@ -34,17 +36,20 @@ test-shake-encrypt SEC SEED FILE:
     {{RUN_JAVA_CMD}} shake-encrypt {{SEC}} {{SEED}} {{FILE}}.bin | diff {{FILE}} -
     rm {{FILE}}.bin
 
-test-ec-encrypt:
-    {{RUN_JAVA_CMD}} ec-keygen "$(hexdump -vn16 -e'4/4 "%08X" 1 "\n"' /dev/urandom)" {{KEY_FILE}}
+PASSWORD := `hexdump -vn16 -e'4/4 "%08X" 1 "\n"' /dev/urandom`
+
+test-ec-generate-key:
+    {{RUN_JAVA_CMD}} ec-keygen "{{PASSWORD}}" {{KEY_FILE}}
+
+test-ec-encrypt: test-ec-generate-key
     {{RUN_JAVA_CMD}} ec-encrypt {{KEY_FILE}} {{ENCRYPT_TEST_FILE}}
-    {{RUN_JAVA_CMD}} ec-decrypt {{KEY_FILE}} {{ENCRYPT_TEST_FILE}}
+    {{RUN_JAVA_CMD}} ec-decrypt {{KEY_FILE}} {{ENCRYPT_TEST_FILE}}.bin | diff {{ENCRYPT_TEST_FILE}} -
+    rm {{ENCRYPT_TEST_FILE}}.bin {{KEY_FILE}} {{KEY_FILE}}.pub
 
-    rm {{KEY_FILE}} {{KEY_FILE}}.pub
-
-
-# java -cp {{CLASS_PATH}} Main ec-encrypt {{KEY_FILE}} {{FILE}} > {{FILE}}.bin
-# java -cp {{CLASS_PATH}} Main ec-encrypt {{KEY_FILE}} {{FILE}}.bin | diff {{FILE}} -
-# rm {{FILE}}.bin
-
+test-ec-sign: test-ec-generate-key
+    {{RUN_JAVA_CMD}} ec-sign "{{PASSWORD}}" {{ENCRYPT_TEST_FILE}} > {{ENCRYPT_TEST_FILE}}.sig
+    echo "VERIFIED" > test
+    {{RUN_JAVA_CMD}} ec-verify {{KEY_FILE}}.pub {{ENCRYPT_TEST_FILE}}.sig {{ENCRYPT_TEST_FILE}} | diff test -
+    rm {{ENCRYPT_TEST_FILE}}.sig {{KEY_FILE}} {{KEY_FILE}}.pub test
 
 
