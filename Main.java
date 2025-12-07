@@ -20,6 +20,7 @@ public class Main {
       case "sha3" -> sha3(args);
       case "shake-random" -> shake_random(args);
       case "shake-encrypt" -> shake_encrypt(args);
+      case "mac-create" -> mac_create(args);
       case "ec-keygen" -> ec_keygen(args);
       case "ec-encrypt" -> ec_encrypt(args);
       case "ec-decrypt" -> ec_decrypt(args);
@@ -87,6 +88,72 @@ public class Main {
     }
   }
 
+  static final String MAC_CREATE_USAGE = "usage: sha3shake mac-create <SECURITY_LEVEL_BITS> <PASSWORD> <FILE>\n";
+  static void mac_create(String[] args) throws IOException {
+    if (args.length != 4) {
+        System.err.printf(MAC_CREATE_USAGE);
+        System.exit(1);
+    }
+
+    final int sec = Integer.parseInt(args[1]);
+    final String password = args[2];
+    final String msg_file_name= args[3];
+    final File msg_file = new File(msg_file_name);
+    final byte[] m = Files.readAllBytes(msg_file.toPath());
+
+    final Edwards.Key key = Edwards.getKey(password.getBytes());
+
+
+    // Random 384-bit k
+    final byte[] k_bytes = new byte[48]; // 384 bits.
+    new SecureRandom().nextBytes(k_bytes);
+    BigInteger k = new BigInteger(1, k_bytes).mod(Edwards.r);
+
+    // W = kV, Z = kG
+    final Edwards.Point W = key.V().mul(k);
+    final Edwards.Point Z = Edwards.G.mul(k);
+
+    // SHAKE convert contents to byte array.
+    final byte[] Wy = W.y.toByteArray();
+    final byte[] shake_output = new byte[64];
+    SHA3SHAKE.SHAKE(256, Wy, shake_output.length << 3, shake_output);
+
+    final byte[] ka = new byte[32];
+    final byte[] ke = new byte[32];
+    for (int i = 0; i < 32; i++) {
+        ka[i] = shake_output[i];
+        ke[i] = shake_output[32 + i];
+    }
+
+    // SHAKE on ke, m bytes, XOR with m to get c.
+    final byte[] ke_stream = new byte[m.length];
+    SHA3SHAKE.SHAKE(128, ke, ke_stream.length << 3, ke_stream);
+
+    final byte[] c = new byte[m.length];
+    for (int i = 0; i < m.length; i++) {
+        c[i] = (byte) (m[i] ^ ke_stream[i]);
+    }
+
+    //SHA3-256, absorb ka and then c, extract digest t.
+    final byte[] mac_input = new byte[ka.length + c.length];
+    System.arraycopy(ka, 0, mac_input, 0, ka.length);
+    System.arraycopy(c, 0, mac_input, ka.length, c.length);
+
+    final byte[] t = new byte[32];
+    SHA3SHAKE.SHA3(256, mac_input, t);
+
+    for (final byte b : t) System.out.printf("%02x", b);
+    System.out.println();
+  }
+
+  static final String MAC_VERIFY_USAGE = "usage: sha3shake mac-verify <SECURITY_LEVEL_BITS> <PASSWORD> <FILE>\n";
+  static void mac_VERIFY(String[] args) throws IOException {
+    if (args.length != 4) {
+        System.err.printf(MAC_VERIFY_USAGE);
+        System.exit(1);
+    }
+  }
+
   static final String SHAKE_ENCRYPT_USAGE = "usage: sha3shake shake-encrypt <SECURITY_LEVEL_BITS> <KEY> <FILE>\n";
   static void shake_encrypt(String[] args) throws IOException {
     if (args.length != 4) {
@@ -107,8 +174,7 @@ public class Main {
     final byte[] contents = Files.readAllBytes(file.toPath());
 
     final byte[] out = new byte[contents.length];
-
-    SHA3SHAKE.SHAKE(sec,key.getBytes(), contents.length, out);
+    SHA3SHAKE.SHAKE(sec, key.getBytes(), contents.length, out);
 
     for (int i = 0; i < out.length; i++) {
       contents[i] ^= out[i];
@@ -143,17 +209,12 @@ public class Main {
     }
 
     {
-      byte[] bytes = key.V().x.toByteArray();
+      byte[] bytes = key.V().y.toByteArray();
       for (int i = 0; i < bytes.length; i++) {
         public_file.printf("%02x", bytes[i]);
       }
       public_file.println();
-
-      bytes = key.V().y.toByteArray();
-      for (int i = 0; i < bytes.length; i++) {
-        public_file.printf("%02x", bytes[i]);
-      }
-      public_file.println();
+      public_file.println(key.V().x.testBit(0));
       public_file.flush();
     }
   }
@@ -169,24 +230,9 @@ public class Main {
     final String msg_file_name = args[2];
 
     // Read public key file.
-    final File public_key_file = new File(args[1] + ".pub");
-    final byte[] public_key = Files.readAllBytes(public_key_file.toPath());
-    final String public_key_string = new String(public_key);
-
-    // First line x, second line y.
-    final String[] lines = public_key_string.split("\\R");
-    if (lines.length < 2) {
-        System.err.printf("Invalid key file.");
-        System.exit(1);
-    }
-
-    BigInteger Vx = new BigInteger(lines[0], 16);
-    BigInteger Vy = new BigInteger(lines[1], 16);
-
-    // V from y and LSB of x using the curve.
-    final Edwards curve = new Edwards();
-    final boolean x_lsb = Vx.testBit(0);
-    final Edwards.Point V = curve.getPoint(Vy, x_lsb);
+    final Scanner public_key_scanner = new Scanner(new File(args[1] + ".pub"));
+    final BigInteger Vy = new BigInteger(public_key_scanner.next(), 16);
+    final Edwards.Point V = Edwards.getPoint(Vy, public_key_scanner.nextBoolean());
 
     final File msg_file = new File(msg_file_name);
     final byte[] m = Files.readAllBytes(msg_file.toPath());
@@ -233,8 +279,8 @@ public class Main {
     try (FileWriter fw = new FileWriter(msg_file_name + ".bin");
          PrintWriter out = new PrintWriter(fw)) {
 
-        out.println(Z.x.toString(16));
         out.println(Z.y.toString(16));
+        out.println(Z.x.testBit(0));
 
         for (int i = 0; i < t.length; i++) {
             out.printf("%02x", t[i]);
@@ -259,31 +305,16 @@ public class Main {
       final String cipher_file_name = args[2];
 
       // Reads private scalar s from key file.
-      final File private_file = new File(key_file_name);
-      final byte[] private_byte = Files.readAllBytes(private_file.toPath());
-      final String private_string = new String(private_byte);
-      final String[] private_lines = private_string.split("\\R");
-      if (private_lines.length < 1) {
-          System.err.println("Invalid private key.");
-          System.exit(1);
-      }
-      BigInteger s = new BigInteger(private_lines[0], 32).mod(Edwards.r);
+      final Scanner private_scanner = new Scanner(new File(key_file_name));
+      final BigInteger s = new BigInteger(private_scanner.next(), 16).mod(Edwards.r);
 
       // Reads ciphertext
-      final File cipher_file = new File(cipher_file_name);
-      final byte[] cipher_bytes = Files.readAllBytes(cipher_file.toPath());
-      final String cipher_string = new String(cipher_bytes);
-      final String[] lines = cipher_string.split("\\R");
-      if (lines.length < 4) {
-          System.err.println("Invalid ciphertext.");
-          System.exit(1);
-      }
-      // Zx Zy
-      final BigInteger Zx = new BigInteger(lines[0], 16);
-      final BigInteger Zy = new BigInteger(lines[1], 16);
+      final Scanner cipher_scanner = new Scanner(new File(cipher_file_name));
+      final BigInteger Zy = new BigInteger(cipher_scanner.next(), 16);
+      final boolean Zx_lsb = cipher_scanner.nextBoolean();
 
       //t to byte[]
-      final String t_hex = lines[2];
+      final String t_hex = cipher_scanner.next();
       final int t_len = t_hex.length() / 2;
       final byte[] t = new byte[t_len];
       for (int i = 0; i < t_len; i++) {
@@ -293,7 +324,7 @@ public class Main {
       }
 
       //c to byte[]
-      final String c_hex = lines[3];
+      final String c_hex = cipher_scanner.next();
       final int c_len = c_hex.length() / 2;
       final byte[] c = new byte[c_len];
       for (int i = 0; i < c_len; i++) {
@@ -302,9 +333,7 @@ public class Main {
           c[i] = (byte) ((high << 4) | low);
       }
       // Z from Zy and LSB of Zx
-      final Edwards curve = new Edwards();
-      final boolean Z_x_lsb = Zx.testBit(0);
-      final Edwards.Point Z = curve.getPoint(Zy, Z_x_lsb);
+      final Edwards.Point Z = Edwards.getPoint(Zy, Zx_lsb);
 
       // W = sZ
       final Edwards.Point W = Z.mul(s);
@@ -406,10 +435,9 @@ public class Main {
     final Edwards.Point V;
     {
       final Scanner scanner = new Scanner(new File(pub_key_file));
-      final BigInteger x = new BigInteger(scanner.next(), 16);
       final BigInteger y = new BigInteger(scanner.next(), 16);
 
-      V = new Edwards.Point(x, y);
+      V = Edwards.getPoint(y, scanner.nextBoolean());
 
       scanner.close();
     }
@@ -443,8 +471,8 @@ public class Main {
   }
 
   static final String USAGE =
-        SHA3_USAGE + SHAKE_RANDOM_USAGE + SHAKE_ENCRYPT_USAGE + EC_KEYGEN_USAGE +
-        EC_ENCRYPT_USAGE + EC_DECRYPT_USAGE + EC_SIGN_USAGE + EC_VERIFY_USAGE;
+        SHA3_USAGE + SHAKE_RANDOM_USAGE + SHAKE_ENCRYPT_USAGE + MAC_CREATE_USAGE + MAC_VERIFY_USAGE +
+        EC_KEYGEN_USAGE + EC_ENCRYPT_USAGE + EC_DECRYPT_USAGE + EC_SIGN_USAGE + EC_VERIFY_USAGE;
 
   // { // test maths
   //   assert Edwards.G.mul(BigInteger.ZERO).equals(new Edwards.Point());

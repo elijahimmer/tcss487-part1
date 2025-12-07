@@ -1,7 +1,7 @@
 CLASS_PATH := "class"
 C_EXEC := "sha3"
 KEY_FILE := "id_ed15343"
-JAVA_PARAMETERS := ("-cp " + CLASS_PATH + " -enableassertions ")
+JAVA_PARAMETERS := ("-cp " + CLASS_PATH + " -enableassertions")
 RUN_JAVA_CMD := ("java " + JAVA_PARAMETERS + " Main")
 ENCRYPT_TEST_FILE := "README.md"
 

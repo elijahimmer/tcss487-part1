@@ -8,7 +8,7 @@ public class Edwards {
   public static final BigInteger p = BigInteger.TWO.pow(256).subtract(BigInteger.valueOf(189));
   public static final BigInteger d = BigInteger.valueOf(15343);
   public static final BigInteger r = BigInteger.TWO.pow(254).subtract(new BigInteger("87175310462106073678594642380840586067"));
-  public static final Point G = Point.fromY(BigInteger.valueOf(-4));
+  public static final Point G = getPoint(BigInteger.valueOf(-4), true);
 
   /**
    * Create an instance of the default curve NUMS-256.
@@ -69,10 +69,28 @@ public class Edwards {
    * @return point (x, y) if it exists and has order r,
    * otherwise the neutral element O = (0, 1)
    */
-  public Point getPoint(BigInteger y, boolean x_lsb) {
-    // TODO(Elijah): finish this
-    return new Point();
+  public static Point getPoint(BigInteger y, final boolean x_lsb) {
+      assert !y.equals(BigInteger.valueOf(-1));
+      y = y.mod(p);
+      final BigInteger ny2 = y.modPow(BigInteger.TWO, p).negate().mod(p);
+      final BigInteger a1 = ny2.add(BigInteger.ONE).mod(p);
+      final BigInteger a2 = ny2.multiply(d).add(BigInteger.ONE).mod(p);
+      final BigInteger x = sqrt(a1.multiply(a2.modInverse(p)).mod(p), p, x_lsb);
+      return new Point(x,y);
   }
+
+  private static BigInteger sqrt(BigInteger v, BigInteger p, boolean lsb) {
+    assert (p.testBit(0) && p.testBit(1));
+    if (v.signum() == 0) {
+      return BigInteger.ZERO;
+    }
+    BigInteger r = v.modPow(p.shiftRight(2).add(BigInteger.ONE), p);
+    if (r.testBit(0) != lsb) {
+      r = p.subtract(r);
+    }
+    return (r.multiply(r).subtract(v).mod(p).signum() == 0) ? r : null;
+  }
+
 
   /**
    * Display a human-readable representation of this curve.
@@ -110,31 +128,8 @@ public class Edwards {
      * @param x the x-coordinate of the desired point
      * @param y the y-coordinate of the desired point
      */
-    public Point(final BigInteger x, final BigInteger y) {
+    private Point(final BigInteger x, final BigInteger y) {
       this.x = x; this.y = y;
-    }
-
-    public static BigInteger sqrt(BigInteger v, BigInteger p, boolean lsb) {
-      assert (p.testBit(0) && p.testBit(1));
-      if (v.signum() == 0) {
-        return BigInteger.ZERO;
-      }
-      BigInteger r = v.modPow(p.shiftRight(2).add(BigInteger.ONE), p);
-      if (r.testBit(0) != lsb) {
-        r = p.subtract(r);
-      }
-      return (r.multiply(r).subtract(v).mod(p).signum() == 0) ? r : null;
-    }
-
-
-    public static Point fromY(BigInteger y) {
-      assert !y.equals(BigInteger.valueOf(-1));
-      y = y.mod(p);
-      final BigInteger ny2 = y.modPow(BigInteger.TWO, p).negate().mod(p);
-      final BigInteger a1 = ny2.add(BigInteger.ONE).mod(p);
-      final BigInteger a2 = ny2.multiply(d).add(BigInteger.ONE).mod(p);
-      final BigInteger x = sqrt(a1.multiply(a2.modInverse(p)).mod(p), p, true);
-      return new Point(x,y);
     }
 
     /**
