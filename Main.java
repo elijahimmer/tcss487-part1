@@ -81,7 +81,7 @@ public class Main {
       System.exit(1);
     }
 
-    SHA3SHAKE.SHAKE(sec, seed, out.length, out);
+    SHA3SHAKE.SHAKE(sec, seed, out.length << 3, out);
 
     for (byte b : out) {
       System.out.printf("%02x", b);

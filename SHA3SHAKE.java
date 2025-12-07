@@ -232,8 +232,7 @@ public class SHA3SHAKE {
     assert input.length == BUFFER_LEN;
 
     // Run algorithm
-    for (int i = 0; i < KECCAK_ROUNDS; i += 1)
-      rnd(input, i);
+    for (int i = 0; i < KECCAK_ROUNDS; i += 1) rnd(input, i);
   }
 
   /**

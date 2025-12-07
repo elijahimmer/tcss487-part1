@@ -22,6 +22,7 @@ c-run *ARGS:
 
 test: java-compile c-compile
     @just test-sha 256 README.md
+    @just test-shake 256
     @just test-shake-encrypt 256 {{PASSWORD}} README.md
     @just test-ec-encrypt
     @just test-ec-sign
@@ -30,6 +31,11 @@ test-sha SEC FILE:
     ./{{C_EXEC}} sha {{SEC}} {{FILE}} > {{FILE}}.sha
     {{RUN_JAVA_CMD}} sha3 {{SEC}} {{FILE}} | diff {{FILE}}.sha -
     rm {{FILE}}.sha
+
+test-shake SEC:
+    ./{{C_EXEC}} shake {{SEC}} 256 password > test.bin
+    {{RUN_JAVA_CMD}} shake-random {{SEC}} password 256 | diff test.bin -
+    rm test.bin
 
 test-shake-encrypt SEC SEED FILE:
     {{RUN_JAVA_CMD}} shake-encrypt {{SEC}} {{SEED}} {{FILE}} > {{FILE}}.bin
