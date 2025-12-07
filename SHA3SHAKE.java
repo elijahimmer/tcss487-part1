@@ -112,7 +112,6 @@ public class SHA3SHAKE {
   */
   public byte[] squeeze(final byte[] out, final int len) {
     assert out.length >= len;
-    final int block_len = this.digest_length;
     final int rsize = 200 - 2 * this.digest_length;
 
     if (this.absorb_pos != 0) {
@@ -131,20 +130,20 @@ public class SHA3SHAKE {
     int remaining = len;
     int out_pos = 0;
 
-    while (remaining >= block_len) {
-      for (this.squeeze_pos = 0; this.squeeze_pos < block_len; this.squeeze_pos++) {
+    while (remaining >= rsize) {
+      for (this.squeeze_pos = 0; this.squeeze_pos < rsize; this.squeeze_pos++) {
         out[this.squeeze_pos + out_pos] = (byte) ((this.buffer[this.squeeze_pos >>> 3]
           >>> (((this.squeeze_pos & 0b111) << 3))) & 0xFF);
       }
-      out_pos += block_len;
+      out_pos += rsize;
       keccak(this.buffer);
-      remaining -= block_len;
+      remaining -= rsize;
     }
 
     for (this.squeeze_pos = 0; this.squeeze_pos < remaining; this.squeeze_pos++) {
       out[this.squeeze_pos + out_pos] = (byte) ((this.buffer[this.squeeze_pos >>> 3] >>> (((this.squeeze_pos & 0b111) << 3))) & 0xFF);
     }
-    if (this.squeeze_pos == block_len) this.squeeze_pos = 0;
+    if (this.squeeze_pos == rsize) this.squeeze_pos = 0;
 
     return out;
   }
