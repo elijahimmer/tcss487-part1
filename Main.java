@@ -20,7 +20,7 @@ public class Main {
       case "sha3" -> sha3(args);
       case "shake-random" -> shake_random(args);
       case "shake-encrypt" -> shake_encrypt(args);
-      case "mac-create" -> mac_create(args);
+      case "mac" -> mac(args);
       case "ec-keygen" -> ec_keygen(args);
       case "ec-encrypt" -> ec_encrypt(args);
       case "ec-decrypt" -> ec_decrypt(args);
@@ -88,70 +88,29 @@ public class Main {
     }
   }
 
-  static final String MAC_CREATE_USAGE = "usage: sha3shake mac-create <SECURITY_LEVEL_BITS> <PASSWORD> <FILE>\n";
-  static void mac_create(String[] args) throws IOException {
-    if (args.length != 4) {
-        System.err.printf(MAC_CREATE_USAGE);
+  static final String MAC_USAGE = "usage: sha3shake mac <SECURITY_LEVEL_BITS> <PASSWORD> <LEN> <FILE>\n";
+  static void mac(String[] args) throws IOException {
+    if (args.length != 5) {
+        System.err.printf(MAC_USAGE);
         System.exit(1);
     }
 
     final int sec = Integer.parseInt(args[1]);
     final String password = args[2];
-    final String msg_file_name= args[3];
+    final int len = Integer.parseInt(args[3]);
+    final String msg_file_name = args[4];
+
     final File msg_file = new File(msg_file_name);
-    final byte[] m = Files.readAllBytes(msg_file.toPath());
+    final byte[] msg = Files.readAllBytes(msg_file.toPath());
 
-    final Edwards.Key key = Edwards.getKey(password.getBytes());
+    SHA3SHAKE shake = new SHA3SHAKE();
+    shake.init(sec, true);
+    shake.absorb(password.getBytes());
+    shake.absorb(msg);
+    final byte[] mac = shake.squeeze(len >> 3);
 
-
-    // Random 384-bit k
-    final byte[] k_bytes = new byte[48]; // 384 bits.
-    new SecureRandom().nextBytes(k_bytes);
-    BigInteger k = new BigInteger(1, k_bytes).mod(Edwards.r);
-
-    // W = kV, Z = kG
-    final Edwards.Point W = key.V().mul(k);
-    final Edwards.Point Z = Edwards.G.mul(k);
-
-    // SHAKE convert contents to byte array.
-    final byte[] Wy = W.y.toByteArray();
-    final byte[] shake_output = new byte[64];
-    SHA3SHAKE.SHAKE(256, Wy, shake_output.length << 3, shake_output);
-
-    final byte[] ka = new byte[32];
-    final byte[] ke = new byte[32];
-    for (int i = 0; i < 32; i++) {
-        ka[i] = shake_output[i];
-        ke[i] = shake_output[32 + i];
-    }
-
-    // SHAKE on ke, m bytes, XOR with m to get c.
-    final byte[] ke_stream = new byte[m.length];
-    SHA3SHAKE.SHAKE(128, ke, ke_stream.length << 3, ke_stream);
-
-    final byte[] c = new byte[m.length];
-    for (int i = 0; i < m.length; i++) {
-        c[i] = (byte) (m[i] ^ ke_stream[i]);
-    }
-
-    //SHA3-256, absorb ka and then c, extract digest t.
-    final byte[] mac_input = new byte[ka.length + c.length];
-    System.arraycopy(ka, 0, mac_input, 0, ka.length);
-    System.arraycopy(c, 0, mac_input, ka.length, c.length);
-
-    final byte[] t = new byte[32];
-    SHA3SHAKE.SHA3(256, mac_input, t);
-
-    for (final byte b : t) System.out.printf("%02x", b);
+    for (final byte b : mac) System.out.printf("%02x", b);
     System.out.println();
-  }
-
-  static final String MAC_VERIFY_USAGE = "usage: sha3shake mac-verify <SECURITY_LEVEL_BITS> <PASSWORD> <FILE>\n";
-  static void mac_VERIFY(String[] args) throws IOException {
-    if (args.length != 4) {
-        System.err.printf(MAC_VERIFY_USAGE);
-        System.exit(1);
-    }
   }
 
   static final String SHAKE_ENCRYPT_USAGE = "usage: sha3shake shake-encrypt <SECURITY_LEVEL_BITS> <KEY> <FILE>\n";
@@ -471,7 +430,7 @@ public class Main {
   }
 
   static final String USAGE =
-        SHA3_USAGE + SHAKE_RANDOM_USAGE + SHAKE_ENCRYPT_USAGE + MAC_CREATE_USAGE + MAC_VERIFY_USAGE +
+        SHA3_USAGE + SHAKE_RANDOM_USAGE + SHAKE_ENCRYPT_USAGE + MAC_USAGE +
         EC_KEYGEN_USAGE + EC_ENCRYPT_USAGE + EC_DECRYPT_USAGE + EC_SIGN_USAGE + EC_VERIFY_USAGE;
 
   // { // test maths
